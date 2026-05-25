@@ -72,7 +72,7 @@ Follow-ups:
 
 ## Final Acceptance
 
-- [ ] Child issue AIC-2587 is In Review with a PR, validation evidence, and browser-extension gate result.
+- [x] Child issue AIC-2587 is In Review with a PR, validation evidence, and browser-extension gate result.
 - [ ] The parent closure command is scoped to AIC-2587:
 
 ```bash

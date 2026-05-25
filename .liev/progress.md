@@ -11,3 +11,4 @@
 - 2026-05-25 11:42:16 CST - fixed Symphony empty-run stall by operator takeover on `liev/aic-2587`; implemented the P0 workflow agent slice.
 - 2026-05-25 11:42:16 CST - validated required static/package command block; package output is `dist/openclaw-browser-host-extension-0.1.0-alpha.7.zip`.
 - 2026-05-25 11:42:16 CST - validated Chrome for Testing load, service worker, Popup/Options render, Pattern smoke, and Context Capture permission boundary.
+- 2026-05-25 11:46:00 CST - opened PR https://github.com/fyaic/openclaw-browser-host-extension/pull/2 from `liev/aic-2587` to `main`.
