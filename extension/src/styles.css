@@ -6,7 +6,7 @@ body {
 }
 
 .popup {
-  width: 320px;
+  width: 360px;
   padding: 14px;
 }
 
@@ -49,6 +49,66 @@ header {
   gap: 8px;
 }
 
+.workflow {
+  margin-top: 12px;
+}
+
+.workflow h2 {
+  margin: 12px 0 6px;
+  color: #35465a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.stack {
+  display: grid;
+  gap: 6px;
+}
+
+.workflow-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d7e0ea;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.item-text {
+  min-width: 0;
+}
+
+.item-text strong,
+.item-text small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.item-text strong {
+  font-size: 13px;
+}
+
+.item-text small,
+.empty {
+  color: #667789;
+  font-size: 12px;
+}
+
+.empty {
+  margin: 0;
+  border: 1px dashed #c8d2df;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 6px;
+}
+
 button {
   border: 1px solid #c8d2df;
   border-radius: 6px;
@@ -60,6 +120,11 @@ button {
 
 button:hover {
   background: #eef4fb;
+}
+
+button.compact {
+  min-height: 28px;
+  padding: 0 8px;
 }
 
 button.primary {

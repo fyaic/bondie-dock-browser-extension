@@ -1,10 +1,19 @@
+import {
+  DEFAULT_PATTERN_SETTINGS,
+  SNAPSHOT_ALARM_NAME,
+  createPatternMemory
+} from './pattern-memory.js';
+
 const DEFAULT_CONFIG = {
   gatewayUrl: '',
   token: '',
   authMode: 'gateway-token',
   nodeName: 'OpenClaw Browser Host',
   protocol: 'node-compatible',
-  autoConnect: false
+  autoConnect: false,
+  contextCaptureEnabled: true,
+  suggestionsEnabled: true,
+  ...DEFAULT_PATTERN_SETTINGS
 };
 const CONFIRM_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
@@ -19,8 +28,12 @@ const CAPABILITIES = [
   'browser.current_tab.info',
   'browser.current_tab.extract',
   'browser.downloads.summary',
+  'browser.pattern.open',
+  'browser.suggestion.show',
   'user.confirm'
 ];
+const SUGGESTIONS_STORAGE_KEY = 'browserSuggestions';
+const MAX_SUGGESTIONS = 20;
 
 let socket = null;
 let heartbeatTimer = null;
@@ -30,6 +43,7 @@ let reconnectEnabled = false;
 let lastInvokeId = '';
 let pendingConfirm = null;
 let hostIdentity = null;
+const patternMemory = createPatternMemory(chrome);
 let status = {
   connected: false,
   connecting: false,
@@ -48,11 +62,18 @@ chrome.runtime.onInstalled.addListener(async () => {
   const existing = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
   await chrome.storage.local.set({ ...DEFAULT_CONFIG, ...existing });
   await ensureHostIdentity();
+  await patternMemory.ensureDefaults();
+  await patternMemory.ensureSnapshotAlarm();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'openclaw-reconnect') {
     connectGateway().catch((error) => setStatus({ lastError: error.message }));
+    return;
+  }
+
+  if (alarm.name === SNAPSHOT_ALARM_NAME) {
+    handlePatternSnapshotAlarm().catch((error) => setStatus({ lastError: error.message }));
   }
 });
 
@@ -67,7 +88,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-ensureHostIdentity().catch((error) => setStatus({ lastError: error.message }));
+initializeServiceWorker().catch((error) => setStatus({ lastError: error.message }));
+
+async function initializeServiceWorker() {
+  await ensureHostIdentity();
+  await patternMemory.ensureDefaults();
+  await patternMemory.ensureSnapshotAlarm();
+}
 
 async function handleRuntimeMessage(message) {
   switch (message?.type) {
@@ -89,6 +116,22 @@ async function handleRuntimeMessage(message) {
       return downloadsSummary(message.payload ?? {});
     case 'userConfirm':
       return userConfirm(message.payload ?? {});
+    case 'patterns':
+      return patternMemory.listPatterns();
+    case 'saveCurrentPattern':
+      return saveCurrentPattern(message.payload ?? {});
+    case 'openPattern':
+      return openPatternAndEmit(message.payload ?? {});
+    case 'saveCandidate':
+      return savePatternCandidate(message.payload ?? {});
+    case 'clearPatternData':
+      return patternMemory.clearLocalData();
+    case 'contextCapture':
+      return captureCurrentContext();
+    case 'suggestions':
+      return listSuggestions();
+    case 'suggestionFeedback':
+      return handleSuggestionFeedback(message.payload ?? {});
     default:
       return { ok: false, error: `Unknown message type: ${message?.type}` };
   }
@@ -344,6 +387,10 @@ async function executeCommand(command, args) {
       return currentPageSummary();
     case 'browser.downloads.summary':
       return downloadsSummary(args);
+    case 'browser.pattern.open':
+      return openPatternAndEmit(args);
+    case 'browser.suggestion.show':
+      return showSuggestion(args);
     case 'user.confirm':
       return userConfirm(args);
     default:
@@ -358,18 +405,12 @@ async function handleNotificationClick(notificationId) {
   };
 
   try {
-    if (await sendNodeEvent('notification.clicked', payload)) {
+    if (await emitOpenClawEvent('notification.clicked', payload)) {
       return;
     }
   } catch {
-    // Fall through to the Browser Host fallback wire shape.
+    // Nothing else to do; notification clicks are best-effort telemetry.
   }
-
-  sendGatewayMessage({
-    type: 'browser.host.event',
-    event: 'notification.clicked',
-    payload
-  });
 }
 
 async function handleOpenClawNodeMessage(message, config) {
@@ -756,6 +797,247 @@ async function downloadsSummary(args) {
       }))
     }
   };
+}
+
+async function handlePatternSnapshotAlarm() {
+  const result = await patternMemory.captureHourlySnapshot();
+  if (!result.ok) {
+    return;
+  }
+
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.patternUploadEnabled) {
+    return;
+  }
+
+  await emitOpenClawEvent('browser.pattern.snapshot', result.summary);
+  if (result.candidates.length) {
+    await emitOpenClawEvent('browser.pattern.detected', {
+      detectedAt: new Date().toISOString(),
+      candidates: result.candidates.map(summarizePatternForEvent)
+    });
+  }
+}
+
+async function saveCurrentPattern(args) {
+  const result = await patternMemory.saveCurrentWindowPattern(args.name);
+  if (!result.ok) {
+    return result;
+  }
+
+  await maybeEmitPatternEvent('browser.pattern.detected', {
+    detectedAt: new Date().toISOString(),
+    source: 'manual',
+    pattern: summarizePatternForEvent(result.pattern)
+  });
+  return result;
+}
+
+async function savePatternCandidate(args) {
+  const result = await patternMemory.saveCandidate(args.candidateId);
+  if (!result.ok) {
+    return result;
+  }
+
+  await maybeEmitPatternEvent('browser.pattern.detected', {
+    detectedAt: new Date().toISOString(),
+    source: 'candidate',
+    pattern: summarizePatternForEvent(result.pattern)
+  });
+  return result;
+}
+
+async function openPatternAndEmit(args) {
+  const result = await patternMemory.openPattern(args);
+  if (!result.ok) {
+    return result;
+  }
+
+  await emitOpenClawEvent('browser.pattern.opened', {
+    patternId: result.payload.patternId,
+    name: result.payload.name,
+    openedAt: result.payload.openedAt,
+    windowId: result.payload.windowId,
+    urlCount: result.payload.urls.length,
+    origins: uniqueOrigins(result.payload.urls)
+  });
+
+  return result;
+}
+
+async function captureCurrentContext() {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.contextCaptureEnabled) {
+    return { ok: false, error: 'Context Capture is disabled' };
+  }
+
+  const summary = await currentPageSummary();
+  if (!summary.ok) {
+    return summary;
+  }
+
+  const payload = {
+    url: summary.payload.url,
+    title: summary.payload.title,
+    selectedText: summary.payload.selection || '',
+    textPreview: summary.payload.textPreview || '',
+    capturedAt: new Date().toISOString()
+  };
+
+  const sent = await emitOpenClawEvent('browser.context.capture', payload);
+  if (!sent) {
+    return {
+      ok: false,
+      error: 'OpenClaw is not connected',
+      payload
+    };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      ...payload,
+      sent: true
+    }
+  };
+}
+
+async function showSuggestion(args) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.suggestionsEnabled) {
+    return { ok: false, error: 'Suggestions are disabled' };
+  }
+
+  const suggestion = normalizeSuggestion(args);
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  const suggestions = [
+    suggestion,
+    ...(stored[SUGGESTIONS_STORAGE_KEY] || []).filter((item) => item.id !== suggestion.id)
+  ].slice(0, MAX_SUGGESTIONS);
+  await chrome.storage.local.set({ [SUGGESTIONS_STORAGE_KEY]: suggestions });
+
+  return {
+    ok: true,
+    payload: suggestion
+  };
+}
+
+async function listSuggestions() {
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  return {
+    ok: true,
+    payload: {
+      suggestions: stored[SUGGESTIONS_STORAGE_KEY] || []
+    }
+  };
+}
+
+async function handleSuggestionFeedback(args) {
+  const suggestionId = args.suggestionId || '';
+  const action = args.action || '';
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  const suggestions = stored[SUGGESTIONS_STORAGE_KEY] || [];
+  const suggestion = suggestions.find((item) => item.id === suggestionId);
+
+  if (!suggestion || (action !== 'accepted' && action !== 'dismissed')) {
+    return { ok: false, error: 'Unknown suggestion feedback' };
+  }
+
+  const feedbackAt = new Date().toISOString();
+  if (action === 'accepted' && suggestion.urls.length) {
+    await patternMemory.openPattern({
+      patternId: suggestion.id,
+      urls: suggestion.urls
+    });
+  }
+
+  await chrome.storage.local.set({
+    [SUGGESTIONS_STORAGE_KEY]: suggestions.filter((item) => item.id !== suggestionId)
+  });
+
+  const eventName = action === 'accepted' ? 'browser.suggestion.accepted' : 'browser.suggestion.dismissed';
+  const sent = await emitOpenClawEvent(eventName, {
+    suggestionId: suggestion.id,
+    title: suggestion.title,
+    action,
+    feedbackAt,
+    urlCount: suggestion.urls.length,
+    origins: uniqueOrigins(suggestion.urls)
+  });
+
+  return {
+    ok: true,
+    payload: {
+      suggestionId,
+      action,
+      sent,
+      feedbackAt
+    }
+  };
+}
+
+async function maybeEmitPatternEvent(eventName, payload) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.patternUploadEnabled) {
+    return false;
+  }
+  return emitOpenClawEvent(eventName, payload);
+}
+
+async function emitOpenClawEvent(eventName, payload) {
+  try {
+    if (await sendNodeEvent(eventName, payload)) {
+      return true;
+    }
+  } catch {
+    // Browser Host fallback below preserves the existing best-effort event path.
+  }
+
+  return sendGatewayMessage({
+    type: 'browser.host.event',
+    event: eventName,
+    payload
+  });
+}
+
+function normalizeSuggestion(args) {
+  const urls = Array.isArray(args.urls)
+    ? args.urls.filter(isWebUrl).slice(0, 10)
+    : [];
+
+  return {
+    id: args.id || args.suggestionId || crypto.randomUUID(),
+    title: (args.title || 'OpenClaw suggestion').slice(0, 120),
+    message: (args.message || args.body || '').slice(0, 500),
+    urls,
+    createdAt: new Date().toISOString(),
+    source: 'openclaw'
+  };
+}
+
+function summarizePatternForEvent(pattern) {
+  const urls = (pattern.tabs || []).map((tab) => tab.url).filter(Boolean);
+  return {
+    id: pattern.id,
+    name: pattern.name,
+    source: pattern.source,
+    savedAt: pattern.savedAt,
+    firstSeenAt: pattern.firstSeenAt,
+    lastSeenAt: pattern.lastSeenAt,
+    cooccurrenceCount: pattern.cooccurrenceCount,
+    confidence: pattern.confidence,
+    urlCount: urls.length,
+    origins: uniqueOrigins(urls)
+  };
+}
+
+function uniqueOrigins(urls) {
+  return [...new Set(urls.filter(isWebUrl).map((url) => new URL(url).origin))];
+}
+
+function isWebUrl(url) {
+  return typeof url === 'string' &&
+    (url.startsWith('http://') || url.startsWith('https://'));
 }
 
 async function userConfirm(args) {
