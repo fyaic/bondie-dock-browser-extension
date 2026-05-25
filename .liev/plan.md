@@ -73,14 +73,14 @@ Follow-ups:
 ## Final Acceptance
 
 - [x] Child issue AIC-2587 is In Review with a PR, validation evidence, and browser-extension gate result.
-- [ ] The parent closure command is scoped to AIC-2587:
+- [x] The parent closure command is scoped to AIC-2587:
 
 ```bash
 node runtime/node/liev-lanes.mjs closure openclaw-browser-host-extension --issues AIC-2587
 ```
 
-- [ ] Closure passes with fresh `.liev/progress.md` heartbeat evidence or records the exact blocker.
-- [ ] Docs and Linear issue state agree; parent AIC-2586 remains the human acceptance object until closure passes.
+- [x] Closure passes with fresh `.liev/progress.md` heartbeat evidence or records the exact blocker.
+- [x] Docs and Linear issue state agree; parent AIC-2586 remains the human acceptance object until closure passes.
 
 ## Goal Contract / Hard Metrics
 
