@@ -39,7 +39,61 @@
         <input id="autoConnect" type="checkbox">
         自动连接
       </label>
+      <label class="checkbox">
+        <input id="patternMemoryEnabled" type="checkbox">
+        启用 Pattern Memory
+      </label>
+      <label class="checkbox">
+        <input id="patternUploadEnabled" type="checkbox">
+        允许上传 Pattern 摘要事件
+      </label>
+      <label>
+        固定组合保留数量
+        <input id="patternRetentionLimit" type="number" min="10" max="300" step="1">
+      </label>
+      <label>
+        快照保留数量
+        <input id="patternSnapshotRetentionLimit" type="number" min="10" max="500" step="1">
+      </label>
+      <label>
+        候选共现阈值
+        <input id="patternCandidateMinCooccurrence" type="number" min="2" max="10" step="1">
+      </label>
+      <label class="checkbox">
+        <input id="contextCaptureEnabled" type="checkbox">
+        启用页面智能服务
+      </label>
+      <label>
+        OpenClaw 本地通道
+        <input id="captureSessionKey" placeholder="OpenClaw 本地通道">
+      </label>
+      <h2>内置能力</h2>
+      <label class="checkbox">
+        <input id="mediaToNotesEnabled" type="checkbox">
+        启用 Media to Notes 知识管线
+      </label>
+      <label>
+        Media to Notes 模块目录
+        <input id="mediaToNotesPluginPath" placeholder="/path/to/extension/plugins/media-to-notes">
+      </label>
+      <label>
+        笔记输出目录
+        <input id="mediaToNotesOutputDir" placeholder="~/.openclaw/workspace/browser-notes">
+      </label>
+      <label>
+        环境变量文件
+        <input id="mediaToNotesEnvFile" placeholder="留空则读取模块目录下 .env">
+      </label>
+      <label>
+        默认管线参数
+        <input id="mediaToNotesDefaultFlags" placeholder="--skip-polish">
+      </label>
+      <label class="checkbox">
+        <input id="suggestionsEnabled" type="checkbox">
+        显示 OpenClaw / Pattern Memory 建议
+      </label>
       <button id="save">保存</button>
+      <button id="clearPatterns" type="button">清空本地 Pattern 数据</button>
       <p id="message"></p>
     </main>
     <script src="options.js"></script>

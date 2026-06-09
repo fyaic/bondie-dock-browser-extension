@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenClaw 处理历史</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="history-page">
+      <header class="history-header">
+        <div>
+          <h1>处理历史</h1>
+          <p>浏览器触手触发过的页面处理记录</p>
+        </div>
+        <button id="refreshHistory" type="button">刷新</button>
+      </header>
+      <section class="history-toolbar" aria-label="历史筛选">
+        <div class="history-filters">
+          <button type="button" data-history-filter="all" aria-pressed="true">全部</button>
+          <button type="button" data-history-filter="processing">处理中</button>
+          <button type="button" data-history-filter="done">已完成</button>
+          <button type="button" data-history-filter="captured-local">本地捕获</button>
+          <button type="button" data-history-filter="error">失败</button>
+        </div>
+        <span id="historyCount" class="history-count">0 条</span>
+      </section>
+      <section id="historyList" class="history-list"></section>
+    </main>
+    <script src="history.js"></script>
+  </body>
+</html>

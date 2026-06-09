@@ -1,15 +1,15 @@
 # 快速安装 OpenClaw Browser Host
 
-日期：2026-05-14
+日期：2026-06-09
 
-适用版本：0.1.0-alpha.7
+适用版本：0.1.0-alpha.11
 
 ## 安装包
 
 内测分发使用 zip 包：
 
 ```text
-openclaw-browser-host-extension-0.1.0-alpha.7.zip
+openclaw-browser-host-extension-0.1.0-alpha.11.zip
 ```
 
 用户拿到 zip 后先解压到一个固定目录，例如：
@@ -78,6 +78,8 @@ Protocol: OpenClaw Node compatible
 
 保存后点击插件 popup 里的连接。
 
+0.1.0-alpha.11 起，`OpenClaw Node compatible` 会按 Gateway protocol 4 发送 `minProtocol/maxProtocol = 4`，并使用 `node.presence.alive` 做 node role 心跳。本地验证使用的 Chrome 扩展 ID 是 `cljflebfgmekmnojaiaonfdjcmoonbpf`；旧版本在 Gateway 日志中的典型失败症状是 `code=1002 reason=protocol mismatch`，并伴随 `min=3 max=3 expected=4 probeMin=4`。
+
 如果 Gateway 要求配对，服务侧批准该 browser node 后，插件会保存 deviceToken；后续重连不需要再次输入 GatewayToken。
 
 ## 验证
@@ -115,3 +117,4 @@ Chrome / Edge 对浏览器插件有安全限制。PoC 内测阶段使用 unpacke
 1. 关闭浏览器或停用旧扩展。
 2. 用新 zip 解压覆盖旧目录。
 3. 在 `chrome://extensions` 或 `edge://extensions` 点击插件卡片上的 Reload。
+4. 确认扩展详情页显示的 service worker 版本已经更新到当前 `version_name`。

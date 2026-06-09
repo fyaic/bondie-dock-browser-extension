@@ -1,35 +1,72 @@
+import {
+  DEFAULT_PATTERN_SETTINGS,
+  SNAPSHOT_ALARM_NAME,
+  createPatternMemory
+} from './pattern-memory.js';
+
 const DEFAULT_CONFIG = {
   gatewayUrl: '',
   token: '',
   authMode: 'gateway-token',
   nodeName: 'OpenClaw Browser Host',
   protocol: 'node-compatible',
-  autoConnect: false
+  autoConnect: false,
+  contextCaptureEnabled: true,
+  captureSessionKey: 'browser-inbox',
+  mediaToNotesEnabled: true,
+  mediaToNotesPluginPath: '',
+  mediaToNotesOutputDir: '~/.openclaw/workspace/browser-notes',
+  mediaToNotesEnvFile: '',
+  mediaToNotesDefaultFlags: '--skip-polish',
+  suggestionsEnabled: true,
+  ...DEFAULT_PATTERN_SETTINGS
 };
 const CONFIRM_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 const RECONNECT_ALARM_MINUTES = 1;
 const RECONNECT_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000];
+const PATTERN_OBSERVE_DEBOUNCE_MS = 3 * 1000;
+const PATTERN_OBSERVE_MIN_INTERVAL_MS = 60 * 1000;
+const PATTERN_OBSERVE_STATE_KEY = 'browserPatternObserveState';
+const PATTERN_SUGGESTION_STATE_KEY = 'browserPatternSuggestionState';
+const PATTERN_SUGGESTION_COOLDOWN_MS = 60 * 60 * 1000;
+const PATTERN_SUGGESTION_DISMISS_MS = 24 * 60 * 60 * 1000;
 const NODE_CLIENT_ID = 'node-host';
-const NODE_PROTOCOL_VERSION = 3;
+const NODE_PROTOCOL_VERSION = 4;
 const NODE_CATEGORIES = ['browser', 'user'];
+const DEFAULT_CAPTURE_SESSION_KEY = 'browser-inbox';
+const MEDIA_TO_NOTES_PLUGIN_ID = 'media-to-notes';
+const MEDIA_TO_NOTES_PLUGIN_NAME = 'Media to Notes';
 const CAPABILITIES = [
   'browser.notify',
   'system.notify',
   'browser.current_tab.info',
   'browser.current_tab.extract',
   'browser.downloads.summary',
+  'browser.pattern.open',
+  'browser.page.service',
+  'browser.knowledge.capture',
+  'browser.suggestion.show',
   'user.confirm'
 ];
+const SUGGESTIONS_STORAGE_KEY = 'browserSuggestions';
+const HANDOFFS_STORAGE_KEY = 'browserHandoffs';
+const MAX_SUGGESTIONS = 20;
+const MAX_HANDOFFS = 20;
+const MAX_HANDOFF_REPLY_CHARS = 8000;
 
 let socket = null;
 let heartbeatTimer = null;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
 let reconnectEnabled = false;
+let nextAutoConnectAt = 0;
+let patternObserveTimer = null;
 let lastInvokeId = '';
 let pendingConfirm = null;
 let hostIdentity = null;
+const pendingEventRequests = new Map();
+const patternMemory = createPatternMemory(chrome);
 let status = {
   connected: false,
   connecting: false,
@@ -47,12 +84,37 @@ let status = {
 chrome.runtime.onInstalled.addListener(async () => {
   const existing = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
   await chrome.storage.local.set({ ...DEFAULT_CONFIG, ...existing });
-  await ensureHostIdentity();
+  await initializeServiceWorker();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  initializeServiceWorker().catch((error) => setStatus({ lastError: error.message }));
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'openclaw-reconnect') {
     connectGateway().catch((error) => setStatus({ lastError: error.message }));
+    return;
+  }
+
+  if (alarm.name === SNAPSHOT_ALARM_NAME) {
+    handlePatternSnapshotAlarm().catch((error) => setStatus({ lastError: error.message }));
+  }
+});
+
+chrome.tabs.onActivated.addListener(() => {
+  schedulePatternObservation('tab-activated');
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' || changeInfo.url || tab?.active) {
+    schedulePatternObservation('tab-updated');
+  }
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+    schedulePatternObservation('window-focused');
   }
 });
 
@@ -67,11 +129,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-ensureHostIdentity().catch((error) => setStatus({ lastError: error.message }));
+initializeServiceWorker().catch((error) => setStatus({ lastError: error.message }));
+
+async function initializeServiceWorker() {
+  await restorePersistedStatus();
+  await ensureHostIdentity();
+  await patternMemory.ensureDefaults();
+  await patternMemory.ensureSnapshotAlarm();
+  schedulePatternObservation('service-worker-ready', { immediate: true });
+  await maybeAutoConnect();
+}
+
+async function restorePersistedStatus() {
+  const stored = await chrome.storage.local.get([
+    'connectionStatus',
+    'browserDeviceToken',
+    'browserPairingStatus'
+  ]);
+  const previous = stored.connectionStatus || {};
+  status = {
+    ...status,
+    ...previous,
+    connected: false,
+    connecting: false,
+    registered: false,
+    online: false,
+    pairing: stored.browserDeviceToken ? 'paired' : stored.browserPairingStatus || previous.pairing || status.pairing,
+    lastDisconnectedAt: previous.lastDisconnectedAt || new Date().toISOString()
+  };
+  await chrome.storage.local.set({ connectionStatus: status });
+}
+
+async function maybeAutoConnect() {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.autoConnect || !config.gatewayUrl || socket || status.connecting || Date.now() < nextAutoConnectAt) {
+    return;
+  }
+
+  connectGateway().catch((error) => setStatus({
+    connecting: false,
+    lastError: error.message
+  }));
+}
 
 async function handleRuntimeMessage(message) {
   switch (message?.type) {
     case 'status':
+      await maybeAutoConnect();
       return { ok: true, status };
     case 'connect':
       await connectGateway();
@@ -83,12 +187,36 @@ async function handleRuntimeMessage(message) {
       return showNotification(message.payload ?? {});
     case 'currentTab':
       return currentTabInfo();
+    case 'pageMeta':
+      return pageServiceInfo();
+    case 'pageService':
+      return runPageService(message.payload ?? {});
     case 'pageSummary':
       return currentPageSummary();
     case 'downloadsSummary':
       return downloadsSummary(message.payload ?? {});
     case 'userConfirm':
       return userConfirm(message.payload ?? {});
+    case 'patterns':
+      return listPatternsWithRelated();
+    case 'saveCurrentPattern':
+      return saveCurrentPattern(message.payload ?? {});
+    case 'scanPatterns':
+      return scanPatternsNow();
+    case 'openPattern':
+      return openPatternAndEmit(message.payload ?? {});
+    case 'saveCandidate':
+      return savePatternCandidate(message.payload ?? {});
+    case 'clearPatternData':
+      return patternMemory.clearLocalData();
+    case 'contextCapture':
+      return captureCurrentContext(message.payload ?? {});
+    case 'suggestions':
+      return listSuggestions();
+    case 'suggestionFeedback':
+      return handleSuggestionFeedback(message.payload ?? {});
+    case 'handoffs':
+      return listHandoffs();
     default:
       return { ok: false, error: `Unknown message type: ${message?.type}` };
   }
@@ -120,8 +248,8 @@ async function connectGateway() {
     reconnectAttempt = 0;
     setStatus({
       connected: true,
-      connecting: false,
-      online: true,
+      connecting: config.protocol !== 'browser-host',
+      online: config.protocol === 'browser-host',
       hostId: identity.hostId,
       pairing: storedAuth.browserDeviceToken ? 'paired' : status.pairing,
       lastError: '',
@@ -142,15 +270,18 @@ async function connectGateway() {
     });
   });
 
-  socket.addEventListener('close', () => {
-    if (socket === activeSocket) {
-      socket = null;
+  socket.addEventListener('close', (event) => {
+    if (socket !== activeSocket) {
+      return;
     }
+    socket = null;
     stopHeartbeat();
+    const closeError = formatWebSocketCloseError(event);
     setStatus({
       connected: false,
       connecting: false,
       online: false,
+      lastError: closeError || status.lastError,
       lastDisconnectedAt: new Date().toISOString()
     });
     if (reconnectEnabled) {
@@ -159,6 +290,9 @@ async function connectGateway() {
   });
 
   socket.addEventListener('error', () => {
+    if (socket !== activeSocket) {
+      return;
+    }
     setStatus({ connecting: false, lastError: 'WebSocket error' });
   });
 }
@@ -183,6 +317,7 @@ function scheduleReconnect() {
   clearReconnectSchedule();
   const delay = RECONNECT_BACKOFF_MS[Math.min(reconnectAttempt, RECONNECT_BACKOFF_MS.length - 1)];
   reconnectAttempt += 1;
+  nextAutoConnectAt = Date.now() + delay;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     connectGateway().catch((error) => setStatus({ lastError: error.message }));
@@ -195,7 +330,16 @@ function clearReconnectSchedule() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
+  nextAutoConnectAt = 0;
   chrome.alarms.clear('openclaw-reconnect');
+}
+
+function formatWebSocketCloseError(event) {
+  if (!event || event.code === 1000) {
+    return '';
+  }
+  const reason = event.reason ? `: ${event.reason}` : '';
+  return `WebSocket closed ${event.code}${reason}`;
 }
 
 async function handleGatewayMessage(raw) {
@@ -303,16 +447,19 @@ function startHeartbeat(config, identity) {
   stopHeartbeat();
   heartbeatTimer = setInterval(() => {
     if (config.protocol === 'node-compatible') {
-      sendGatewayMessage({
-        type: 'req',
-        id: crypto.randomUUID(),
-        method: 'ping',
-        params: {
-          client: NODE_CLIENT_ID,
-          deviceId: identity.hostId,
-          sentAt: new Date().toISOString()
+      const sentAt = new Date().toISOString();
+      sendNodeEvent('node.presence.alive', {
+        trigger: 'connect',
+        sentAtMs: Date.now(),
+        displayName: config.nodeName || 'OpenClaw Browser Host',
+        version: chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version,
+        platform: 'chrome-extension-mv3',
+        deviceFamily: 'browser'
+      }).then((sent) => {
+        if (sent) {
+          setStatus({ lastHeartbeatAt: sentAt });
         }
-      });
+      }).catch(() => {});
       return;
     }
 
@@ -344,6 +491,14 @@ async function executeCommand(command, args) {
       return currentPageSummary();
     case 'browser.downloads.summary':
       return downloadsSummary(args);
+    case 'browser.pattern.open':
+      return openPatternAndEmit(args);
+    case 'browser.page.service':
+      return runPageService(args);
+    case 'browser.knowledge.capture':
+      return runPageService({ ...args, service: 'knowledge' });
+    case 'browser.suggestion.show':
+      return showSuggestion(args);
     case 'user.confirm':
       return userConfirm(args);
     default:
@@ -358,18 +513,12 @@ async function handleNotificationClick(notificationId) {
   };
 
   try {
-    if (await sendNodeEvent('notification.clicked', payload)) {
+    if (await emitOpenClawEvent('notification.clicked', payload)) {
       return;
     }
   } catch {
-    // Fall through to the Browser Host fallback wire shape.
+    // Nothing else to do; notification clicks are best-effort telemetry.
   }
-
-  sendGatewayMessage({
-    type: 'browser.host.event',
-    event: 'notification.clicked',
-    payload
-  });
 }
 
 async function handleOpenClawNodeMessage(message, config) {
@@ -382,6 +531,16 @@ async function handleOpenClawNodeMessage(message, config) {
 
     if (eventType === 'node.invoke.request') {
       await handleNodeInvokeEvent(message.payload || {});
+      return true;
+    }
+
+    if (eventType === 'chat') {
+      await handleSubscribedChatEvent(message.payload || {});
+      return true;
+    }
+
+    if (eventType === 'agent') {
+      await handleSubscribedAgentEvent(message.payload || {});
       return true;
     }
 
@@ -499,9 +658,16 @@ async function signNodeConnectPayload(identity, nonce, signedAt, authToken) {
 }
 
 async function handleNodeResponse(message) {
+  if (await handleNodeEventResponse(message)) {
+    return;
+  }
+
   if (message.ok === false) {
     const code = message.error?.code || '';
-    const errorMessage = message.error?.message || 'Node request failed';
+    const errorMessage = formatNodeConnectError(message.error);
+    if (await handleRecoverableNodeAuthError(errorMessage)) {
+      return;
+    }
     if (code === 'NOT_PAIRED') {
       setStatus({
         pairing: 'pending',
@@ -509,6 +675,10 @@ async function handleNodeResponse(message) {
       });
       reconnectEnabled = false;
       return;
+    }
+    if (isAuthRateLimitedError(errorMessage)) {
+      reconnectEnabled = false;
+      clearReconnectSchedule();
     }
     setStatus({ lastError: errorMessage });
     return;
@@ -539,6 +709,52 @@ async function handleNodeResponse(message) {
   const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
   const identity = await ensureHostIdentity();
   startHeartbeat(config, identity);
+  await subscribeToCaptureSession(config);
+}
+
+function formatNodeConnectError(error) {
+  const message = error?.message || 'Node request failed';
+  const details = error?.details || {};
+  if (details.code !== 'PROTOCOL_MISMATCH') {
+    return message;
+  }
+
+  const clientMin = details.clientMinProtocol ?? 'unknown';
+  const clientMax = details.clientMaxProtocol ?? 'unknown';
+  const expected = details.expectedProtocol ?? 'unknown';
+  return `${message}: client ${clientMin}-${clientMax}, expected ${expected}`;
+}
+
+async function handleRecoverableNodeAuthError(errorMessage) {
+  const stored = await chrome.storage.local.get(['browserDeviceToken', 'token']);
+  if (!stored.browserDeviceToken || !stored.token) {
+    return false;
+  }
+
+  if (!isDeviceTokenStaleError(errorMessage) && !isAuthRateLimitedError(errorMessage)) {
+    return false;
+  }
+
+  await chrome.storage.local.remove(['browserDeviceToken']);
+  await chrome.storage.local.set({ browserPairingStatus: 'stale' });
+  setStatus({
+    pairing: 'stale',
+    lastError: 'Stored device token is no longer accepted; retrying with gateway token.'
+  });
+  reconnectAttempt = 0;
+  if (socket) {
+    socket.close(1000, 'stale device token reset');
+  }
+  scheduleReconnect();
+  return true;
+}
+
+function isDeviceTokenStaleError(errorMessage) {
+  return /device token scope mismatch|re-pair|approve scope upgrade/i.test(errorMessage || '');
+}
+
+function isAuthRateLimitedError(errorMessage) {
+  return /too many failed authentication attempts|retry later/i.test(errorMessage || '');
 }
 
 async function handleNodeRequest(message) {
@@ -616,15 +832,172 @@ async function sendNodeEvent(eventName, payload) {
   if (config.protocol !== 'node-compatible') {
     return false;
   }
-  return sendGatewayMessage({
+  const id = crypto.randomUUID();
+  const sent = sendGatewayMessage({
     type: 'req',
-    id: crypto.randomUUID(),
+    id,
     method: 'node.event',
     params: {
       event: eventName,
       payloadJSON: JSON.stringify(payload || {})
     }
   });
+
+  if (sent) {
+    pendingEventRequests.set(id, {
+      eventName,
+      payload: payload || {},
+      sentAt: new Date().toISOString()
+    });
+  }
+
+  return sent;
+}
+
+async function handleNodeEventResponse(message) {
+  const pending = pendingEventRequests.get(message.id);
+  if (!pending) {
+    return false;
+  }
+
+  pendingEventRequests.delete(message.id);
+  if (pending.eventName !== 'agent.request') {
+    return true;
+  }
+
+  const captureId = pending.payload.captureId || '';
+  if (!captureId) {
+    return true;
+  }
+
+  if (message.ok === false) {
+    await patchHandoff(captureId, {
+      state: 'error',
+      error: message.error?.message || 'OpenClaw agent request failed',
+      updatedAt: new Date().toISOString()
+    });
+    return true;
+  }
+
+  const replyText = extractAgentResponseText(message.payload);
+  await patchHandoff(captureId, {
+    state: replyText ? 'done' : 'processing',
+    latestReply: replyText,
+    updatedAt: new Date().toISOString()
+  });
+  return true;
+}
+
+function extractAgentResponseText(payload) {
+  if (!payload) {
+    return '';
+  }
+  if (typeof payload === 'string') {
+    return payload.trim();
+  }
+  if (Array.isArray(payload)) {
+    return payload.map(extractAgentResponseText).filter(Boolean).join('\n\n').trim();
+  }
+  if (typeof payload !== 'object') {
+    return String(payload);
+  }
+  if (payload.ok === true && Object.keys(payload).length === 1) {
+    return '';
+  }
+
+  const direct = [
+    payload.text,
+    payload.output,
+    payload.reply,
+    payload.answer,
+    payload.result,
+    payload.content
+  ].map(extractAgentResponseText).find(Boolean);
+  if (direct) {
+    return direct;
+  }
+
+  if (payload.message) {
+    return extractChatText(payload.message) || extractAgentResponseText(payload.message);
+  }
+  if (payload.response) {
+    return extractAgentResponseText(payload.response);
+  }
+  if (payload.data) {
+    return extractAgentResponseText(payload.data);
+  }
+
+  try {
+    return JSON.stringify(payload);
+  } catch {
+    return '';
+  }
+}
+
+async function subscribeToCaptureSession(config) {
+  if (config.protocol !== 'node-compatible') {
+    return false;
+  }
+
+  const sessionKey = normalizeCaptureSessionKey(config.captureSessionKey);
+  const results = await Promise.all(
+    deriveOpenClawSessionKeys(sessionKey).map((key) => sendNodeEvent('chat.subscribe', { sessionKey: key }))
+  );
+  return results.some(Boolean);
+}
+
+async function handleSubscribedChatEvent(payload) {
+  const text = extractChatText(payload.message);
+  const state = normalizeChatState(payload.state);
+  const errorMessage = typeof payload.errorMessage === 'string' ? payload.errorMessage : '';
+  if (!text && !errorMessage && state !== 'processing') {
+    return;
+  }
+
+  await updateLatestHandoffForSession(payload.sessionKey, {
+    runId: typeof payload.runId === 'string' ? payload.runId : '',
+    state: errorMessage ? 'error' : state,
+    latestReply: text,
+    error: errorMessage,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+async function handleSubscribedAgentEvent(payload) {
+  const stream = typeof payload.stream === 'string' ? payload.stream : '';
+  const phase = typeof payload.data?.phase === 'string' ? payload.data.phase : '';
+  if (stream !== 'lifecycle' || (phase !== 'start' && phase !== 'end' && phase !== 'error')) {
+    return;
+  }
+
+  await updateLatestHandoffForSession(payload.sessionKey, {
+    runId: typeof payload.runId === 'string' ? payload.runId : '',
+    state: phase === 'error' ? 'error' : phase === 'end' ? 'done' : 'processing',
+    error: phase === 'error' ? String(payload.data?.error || 'OpenClaw processing failed') : '',
+    updatedAt: new Date().toISOString()
+  });
+}
+
+function extractChatText(message) {
+  if (!message || !Array.isArray(message.content)) {
+    return '';
+  }
+
+  return message.content
+    .map((part) => typeof part?.text === 'string' ? part.text : '')
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, MAX_HANDOFF_REPLY_CHARS);
+}
+
+function normalizeChatState(state) {
+  if (state === 'final') {
+    return 'done';
+  }
+  if (state === 'error') {
+    return 'error';
+  }
+  return 'processing';
 }
 
 function sendGatewayMessage(message) {
@@ -689,6 +1062,38 @@ async function currentTabInfo() {
       windowId: tab.windowId
     }
   };
+}
+
+async function pageServiceInfo() {
+  const tab = await getActiveWebTab();
+  if (!tab) {
+    return { ok: false, error: 'No active web tab' };
+  }
+
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  const pageType = detectPageServiceType(tab.url);
+  return {
+    ok: true,
+    payload: {
+      id: tab.id,
+      title: tab.title,
+      url: tab.url,
+      favIconUrl: tab.favIconUrl,
+      windowId: tab.windowId,
+      contentType: pageType.contentType,
+      contentLabel: pageType.label,
+      platform: pageType.platform,
+      knowledgeSupported: pageType.knowledgeSupported,
+      knowledgeAbility: buildPageAbility(config, 'knowledge', pageType)
+    }
+  };
+}
+
+async function runPageService(args = {}) {
+  return captureCurrentContext({
+    ...args,
+    intent: normalizePageService(args.service || args.intent)
+  });
 }
 
 async function currentPageSummary() {
@@ -756,6 +1161,994 @@ async function downloadsSummary(args) {
       }))
     }
   };
+}
+
+async function handlePatternSnapshotAlarm() {
+  const result = await patternMemory.captureHourlySnapshot('scheduled');
+  if (!result.ok) {
+    return;
+  }
+
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.patternUploadEnabled) {
+    return;
+  }
+
+  await emitOpenClawEvent('browser.pattern.snapshot', result.summary);
+  if (result.candidates.length) {
+    await emitOpenClawEvent('browser.pattern.detected', {
+      detectedAt: new Date().toISOString(),
+      candidates: result.candidates.map(summarizePatternForEvent)
+    });
+  }
+}
+
+async function scanPatternsNow() {
+  const result = await patternMemory.captureHourlySnapshot('manual-scan');
+  if (!result.ok) {
+    return result;
+  }
+
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (config.patternUploadEnabled) {
+    await emitOpenClawEvent('browser.pattern.snapshot', result.summary);
+    if (result.candidates.length) {
+      await emitOpenClawEvent('browser.pattern.detected', {
+        detectedAt: new Date().toISOString(),
+        candidates: result.candidates.map(summarizePatternForEvent)
+      });
+    }
+  }
+
+  await maybeSuggestRelatedPattern('manual-scan');
+  return listPatternsWithRelated();
+}
+
+function schedulePatternObservation(source, options = {}) {
+  if (patternObserveTimer) {
+    clearTimeout(patternObserveTimer);
+  }
+
+  patternObserveTimer = setTimeout(() => {
+    patternObserveTimer = null;
+    Promise.all([
+      observePatternsFromActivity(source),
+      maybeSuggestRelatedPattern(source)
+    ]).catch((error) => setStatus({ lastError: error.message }));
+  }, options.immediate ? 0 : PATTERN_OBSERVE_DEBOUNCE_MS);
+}
+
+async function listPatternsWithRelated() {
+  await maybeSuggestRelatedPattern('popup-open');
+  const [patternsResult, relatedResult] = await Promise.all([
+    patternMemory.listPatterns(),
+    patternMemory.findRelatedForActiveTab()
+  ]);
+  if (!patternsResult.ok) {
+    return patternsResult;
+  }
+
+  return {
+    ok: true,
+    payload: {
+      ...patternsResult.payload,
+      related: relatedResult?.payload?.match || null
+    }
+  };
+}
+
+async function observePatternsFromActivity(source) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.patternMemoryEnabled) {
+    return;
+  }
+
+  const now = Date.now();
+  const stored = await chrome.storage.local.get([PATTERN_OBSERVE_STATE_KEY]);
+  const lastObservedAt = Number(stored[PATTERN_OBSERVE_STATE_KEY]?.lastObservedAt || 0);
+  if (now - lastObservedAt < PATTERN_OBSERVE_MIN_INTERVAL_MS) {
+    return;
+  }
+
+  await chrome.storage.local.set({
+    [PATTERN_OBSERVE_STATE_KEY]: {
+      lastObservedAt: now,
+      source
+    }
+  });
+
+  const result = await patternMemory.captureHourlySnapshot(source || 'browser-activity');
+  if (!result.ok) {
+    return;
+  }
+
+  await maybeSuggestRelatedPattern(source || 'browser-activity');
+
+  if (config.patternUploadEnabled) {
+    await emitOpenClawEvent('browser.pattern.snapshot', result.summary);
+    if (result.candidates.length) {
+      await emitOpenClawEvent('browser.pattern.detected', {
+        detectedAt: new Date().toISOString(),
+        candidates: result.candidates.map(summarizePatternForEvent)
+      });
+    }
+  }
+}
+
+async function maybeSuggestRelatedPattern(source) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.patternMemoryEnabled || !config.suggestionsEnabled) {
+    await prunePatternMemorySuggestions();
+    return;
+  }
+
+  const result = await patternMemory.findRelatedForActiveTab();
+  const match = result?.payload?.match;
+  if (!match?.urls?.length) {
+    await prunePatternMemorySuggestions();
+    return;
+  }
+
+  const now = Date.now();
+  const stored = await chrome.storage.local.get([
+    SUGGESTIONS_STORAGE_KEY,
+    PATTERN_SUGGESTION_STATE_KEY
+  ]);
+  const state = normalizePatternSuggestionState(stored[PATTERN_SUGGESTION_STATE_KEY]);
+  const patternKey = match.patternId || match.id;
+  const dismissedUntil = Number(state.dismissedUntilByPattern[patternKey] || 0);
+  if (dismissedUntil > now) {
+    await prunePatternMemorySuggestions();
+    return;
+  }
+
+  const lastShownAt = Number(state.lastShownAtByPattern[patternKey] || 0);
+  const existingSuggestions = stored[SUGGESTIONS_STORAGE_KEY] || [];
+  const suggestionId = `pattern-memory:${patternKey}`;
+  const existingSuggestion = existingSuggestions.find((item) => item.id === suggestionId);
+  const alreadyVisible = Boolean(existingSuggestion);
+  if (!alreadyVisible && now - lastShownAt < PATTERN_SUGGESTION_COOLDOWN_MS) {
+    await prunePatternMemorySuggestions();
+    return;
+  }
+
+  const previewTitles = suggestionPreviewTitles(match.relatedTabs || []);
+  const suggestion = normalizeSuggestion({
+    id: suggestionId,
+    source: 'pattern-memory',
+    kind: 'related-pattern',
+    patternId: patternKey,
+    title: `恢复「${match.name || '这个工作流'}」`,
+    message: previewTitles.length
+      ? `可恢复：${previewTitles.join('、')}`
+      : `Pattern Memory 识别到当前页面属于这个工作流，可打开 ${match.urls.length} 个相关页面。`,
+    urls: match.urls,
+    previewTitles,
+    reason: match.reason,
+    evidence: match.evidence,
+    confidence: match.confidence,
+    matchedBy: match.matchedBy,
+    trigger: source
+  });
+  if (existingSuggestion) {
+    suggestion.createdAt = existingSuggestion.createdAt || suggestion.createdAt;
+  }
+
+  if (existingSuggestion && isSameSuggestionContent(existingSuggestion, suggestion)) {
+    await prunePatternMemorySuggestions(suggestion.id);
+    return;
+  }
+
+  const suggestions = [
+    suggestion,
+    ...existingSuggestions.filter((item) => item.id !== suggestion.id && item.source !== 'pattern-memory')
+  ].slice(0, MAX_SUGGESTIONS);
+
+  await chrome.storage.local.set({
+    [SUGGESTIONS_STORAGE_KEY]: suggestions,
+    [PATTERN_SUGGESTION_STATE_KEY]: {
+      ...state,
+      lastShownAtByPattern: {
+        ...state.lastShownAtByPattern,
+        [patternKey]: now
+      }
+    }
+  });
+  await updateActionBadge(suggestions.length);
+}
+
+function isSameSuggestionContent(left, right) {
+  return left.title === right.title &&
+    left.message === right.message &&
+    left.reason === right.reason &&
+    left.patternId === right.patternId &&
+    left.matchedBy === right.matchedBy &&
+    sameStringArray(left.urls, right.urls) &&
+    sameStringArray(left.previewTitles, right.previewTitles);
+}
+
+function sameStringArray(left, right) {
+  const leftItems = Array.isArray(left) ? left : [];
+  const rightItems = Array.isArray(right) ? right : [];
+  if (leftItems.length !== rightItems.length) {
+    return false;
+  }
+  return leftItems.every((item, index) => item === rightItems[index]);
+}
+
+async function prunePatternMemorySuggestions(keepId = '') {
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  const suggestions = stored[SUGGESTIONS_STORAGE_KEY] || [];
+  const nextSuggestions = suggestions.filter((item) => item.source !== 'pattern-memory' || item.id === keepId);
+  if (nextSuggestions.length !== suggestions.length) {
+    await chrome.storage.local.set({ [SUGGESTIONS_STORAGE_KEY]: nextSuggestions });
+  }
+  await updateActionBadge(nextSuggestions.length);
+}
+
+async function saveCurrentPattern(args) {
+  const result = await patternMemory.saveCurrentWindowPattern(args.name);
+  if (!result.ok) {
+    return result;
+  }
+
+  await maybeEmitPatternEvent('browser.pattern.detected', {
+    detectedAt: new Date().toISOString(),
+    source: 'manual',
+    pattern: summarizePatternForEvent(result.pattern)
+  });
+  return result;
+}
+
+async function savePatternCandidate(args) {
+  const result = await patternMemory.saveCandidate(args.candidateId);
+  if (!result.ok) {
+    return result;
+  }
+
+  await maybeEmitPatternEvent('browser.pattern.detected', {
+    detectedAt: new Date().toISOString(),
+    source: 'candidate',
+    pattern: summarizePatternForEvent(result.pattern)
+  });
+  return result;
+}
+
+async function openPatternAndEmit(args) {
+  const result = await patternMemory.openPattern(args);
+  if (!result.ok) {
+    return result;
+  }
+
+  await emitOpenClawEvent('browser.pattern.opened', {
+    patternId: result.payload.patternId,
+    name: result.payload.name,
+    openedAt: result.payload.openedAt,
+    windowId: result.payload.windowId,
+    urlCount: result.payload.urls.length,
+    origins: uniqueOrigins(result.payload.urls)
+  });
+
+  return result;
+}
+
+async function captureCurrentContext(args = {}) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.contextCaptureEnabled) {
+    return { ok: false, error: 'Context Capture is disabled' };
+  }
+
+  const summary = await currentPageSummary();
+  if (!summary.ok) {
+    return summary;
+  }
+
+  const intent = normalizeCaptureIntent(args.intent);
+  const pageType = detectPageServiceType(summary.payload.url);
+  const service = normalizePageService(args.service || intent);
+  const payload = {
+    captureId: crypto.randomUUID(),
+    url: summary.payload.url,
+    title: summary.payload.title,
+    selectedText: summary.payload.selection || '',
+    textPreview: summary.payload.textPreview || '',
+    intent,
+    service,
+    contentType: pageType.contentType,
+    contentLabel: pageType.label,
+    platform: pageType.platform,
+    ability: buildPageAbility(config, service, pageType),
+    route: {
+      sessionKey: normalizeCaptureSessionKey(config.captureSessionKey),
+      canonicalSessionKey: canonicalizeOpenClawSessionKey(config.captureSessionKey),
+      display: 'OpenClaw 本地通道'
+    },
+    capturedAt: new Date().toISOString()
+  };
+
+  const handoff = createHandoffRecord(payload);
+  await saveHandoff(handoff);
+
+  const contextEventSent = await emitOpenClawEvent('browser.context.capture', payload);
+  await subscribeToCaptureSession(config);
+  const agentRequestSent = await emitOpenClawAgentRequest(payload);
+  const state = agentRequestSent ? 'processing' : 'captured-local';
+  await patchHandoff(payload.captureId, {
+    state,
+    contextEventSent,
+    agentRequestSent,
+    updatedAt: new Date().toISOString()
+  });
+
+  if (!contextEventSent && !agentRequestSent) {
+    return {
+      ok: false,
+      error: 'OpenClaw is not connected',
+      payload
+    };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      ...payload,
+      sent: contextEventSent || agentRequestSent,
+      contextEventSent,
+      agentRequestSent,
+      state
+    }
+  };
+}
+
+async function showSuggestion(args) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.suggestionsEnabled) {
+    return { ok: false, error: 'Suggestions are disabled' };
+  }
+
+  const suggestion = normalizeSuggestion(args);
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  const suggestions = [
+    suggestion,
+    ...(stored[SUGGESTIONS_STORAGE_KEY] || []).filter((item) => item.id !== suggestion.id)
+  ].slice(0, MAX_SUGGESTIONS);
+  await chrome.storage.local.set({ [SUGGESTIONS_STORAGE_KEY]: suggestions });
+  await updateActionBadge(suggestions.length);
+
+  return {
+    ok: true,
+    payload: suggestion
+  };
+}
+
+async function listSuggestions() {
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  await updateActionBadge((stored[SUGGESTIONS_STORAGE_KEY] || []).length);
+  return {
+    ok: true,
+    payload: {
+      suggestions: stored[SUGGESTIONS_STORAGE_KEY] || []
+    }
+  };
+}
+
+async function handleSuggestionFeedback(args) {
+  const suggestionId = args.suggestionId || '';
+  const action = args.action || '';
+  const stored = await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]);
+  const suggestions = stored[SUGGESTIONS_STORAGE_KEY] || [];
+  const suggestion = suggestions.find((item) => item.id === suggestionId);
+
+  if (!suggestion || (action !== 'accepted' && action !== 'dismissed')) {
+    return { ok: false, error: 'Unknown suggestion feedback' };
+  }
+
+  const feedbackAt = new Date().toISOString();
+  if (action === 'accepted' && suggestion.urls.length) {
+    await patternMemory.openPattern({
+      patternId: suggestion.patternId || suggestion.id,
+      urls: suggestion.urls
+    });
+  }
+  if (suggestion.source === 'pattern-memory' && suggestion.patternId) {
+    await patternMemory.recordFeedback(suggestion.patternId, action);
+  }
+
+  const statePatch = {};
+  if (action === 'dismissed' && suggestion.source === 'pattern-memory' && suggestion.patternId) {
+    const stateStored = await chrome.storage.local.get([PATTERN_SUGGESTION_STATE_KEY]);
+    const state = normalizePatternSuggestionState(stateStored[PATTERN_SUGGESTION_STATE_KEY]);
+    statePatch[PATTERN_SUGGESTION_STATE_KEY] = {
+      ...state,
+      dismissedUntilByPattern: {
+        ...state.dismissedUntilByPattern,
+        [suggestion.patternId]: Date.now() + PATTERN_SUGGESTION_DISMISS_MS
+      }
+    };
+  }
+
+  const nextSuggestions = suggestions.filter((item) => item.id !== suggestionId);
+  await chrome.storage.local.set({
+    [SUGGESTIONS_STORAGE_KEY]: nextSuggestions,
+    ...statePatch
+  });
+  await updateActionBadge(nextSuggestions.length);
+
+  const eventName = action === 'accepted' ? 'browser.suggestion.accepted' : 'browser.suggestion.dismissed';
+  const sent = await emitOpenClawEvent(eventName, {
+    suggestionId: suggestion.id,
+    source: suggestion.source,
+    kind: suggestion.kind,
+    patternId: suggestion.patternId,
+    title: suggestion.title,
+    action,
+    feedbackAt,
+    urlCount: suggestion.urls.length,
+    origins: uniqueOrigins(suggestion.urls)
+  });
+
+  return {
+    ok: true,
+    payload: {
+      suggestionId,
+      action,
+      sent,
+      feedbackAt
+    }
+  };
+}
+
+async function maybeEmitPatternEvent(eventName, payload) {
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  if (!config.patternUploadEnabled) {
+    return false;
+  }
+  return emitOpenClawEvent(eventName, payload);
+}
+
+async function emitOpenClawAgentRequest(capture) {
+  return sendNodeEvent('agent.request', {
+    sessionKey: capture.route.canonicalSessionKey || capture.route.sessionKey,
+    message: buildAgentRequestMessage(capture),
+    thinking: 'low',
+    deliver: false,
+    receipt: false,
+    source: 'browser-extension',
+    captureId: capture.captureId,
+    url: capture.url,
+    title: capture.title,
+    intent: capture.intent,
+    service: capture.service,
+    contentType: capture.contentType,
+    platform: capture.platform,
+    ability: capture.ability,
+    capturedAt: capture.capturedAt
+  });
+}
+
+async function emitOpenClawEvent(eventName, payload) {
+  try {
+    if (await sendNodeEvent(eventName, payload)) {
+      return true;
+    }
+  } catch {
+    // Browser Host fallback below preserves the existing best-effort event path.
+  }
+
+  return sendGatewayMessage({
+    type: 'browser.host.event',
+    event: eventName,
+    payload
+  });
+}
+
+async function listHandoffs() {
+  const stored = await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]);
+  return {
+    ok: true,
+    payload: {
+      handoffs: stored[HANDOFFS_STORAGE_KEY] || []
+    }
+  };
+}
+
+function createHandoffRecord(capture) {
+  return {
+    id: capture.captureId,
+    title: capture.title || 'Untitled page',
+    url: capture.url,
+    intent: capture.intent,
+    service: capture.service,
+    contentType: capture.contentType,
+    contentLabel: capture.contentLabel,
+    platform: capture.platform,
+    ability: capture.ability,
+    sessionKey: capture.route.sessionKey,
+    canonicalSessionKey: capture.route.canonicalSessionKey,
+    state: 'queued',
+    contextEventSent: false,
+    agentRequestSent: false,
+    latestReply: '',
+    error: '',
+    notifiedAt: '',
+    capturedAt: capture.capturedAt,
+    updatedAt: capture.capturedAt
+  };
+}
+
+async function saveHandoff(record) {
+  const stored = await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]);
+  const next = [
+    record,
+    ...(stored[HANDOFFS_STORAGE_KEY] || []).filter((item) => item.id !== record.id)
+  ].slice(0, MAX_HANDOFFS);
+  await chrome.storage.local.set({ [HANDOFFS_STORAGE_KEY]: next });
+}
+
+async function patchHandoff(id, patch) {
+  const stored = await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]);
+  const items = stored[HANDOFFS_STORAGE_KEY] || [];
+  let completed = null;
+  await chrome.storage.local.set({
+    [HANDOFFS_STORAGE_KEY]: items.map((item) => {
+      if (item.id !== id) {
+        return item;
+      }
+      const next = { ...item, ...patch };
+      if (shouldNotifyHandoffComplete(next, item)) {
+        next.notifiedAt = new Date().toISOString();
+        completed = next;
+      }
+      return next;
+    })
+  });
+  if (completed) {
+    await notifyHandoffComplete(completed);
+  }
+}
+
+async function updateLatestHandoffForSession(sessionKey, patch) {
+  const normalizedSessionKey = normalizeCaptureSessionKey(sessionKey);
+  const stored = await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]);
+  const items = stored[HANDOFFS_STORAGE_KEY] || [];
+  const index = items.findIndex((item) => item.sessionKey === normalizedSessionKey || item.canonicalSessionKey === normalizedSessionKey);
+  if (index < 0) {
+    return;
+  }
+
+  const next = [...items];
+  const previous = next[index];
+  next[index] = {
+    ...previous,
+    ...patch
+  };
+  if (shouldNotifyHandoffComplete(next[index], previous)) {
+    next[index].notifiedAt = new Date().toISOString();
+  }
+  await chrome.storage.local.set({ [HANDOFFS_STORAGE_KEY]: next });
+  if (next[index].notifiedAt && next[index].notifiedAt !== previous.notifiedAt) {
+    await notifyHandoffComplete(next[index]);
+  }
+}
+
+function shouldNotifyHandoffComplete(next, previous) {
+  if (next.state !== 'done' || previous.notifiedAt) {
+    return false;
+  }
+  return Boolean(next.latestReply || next.error);
+}
+
+async function notifyHandoffComplete(handoff) {
+  const service = handoff.service || handoff.intent;
+  const path = extractMarkdownPath(handoff.latestReply);
+  const title = service === 'knowledge' ? '知识笔记已生成' : 'OpenClaw 处理完成';
+  const body = [
+    handoff.title || '当前页面',
+    path ? `路径：${path}` : compactNotificationText(handoff.latestReply || '处理完成')
+  ].filter(Boolean).join('\n');
+
+  await showNotification({
+    title,
+    body: compactNotificationText(body),
+    data: {
+      captureId: handoff.id,
+      service,
+      notePath: path,
+      url: handoff.url
+    }
+  });
+}
+
+function extractMarkdownPath(text) {
+  const raw = typeof text === 'string' ? text : '';
+  const match = raw.match(/(?:~|\/Users|\/tmp|\/var|\/private|\/)[^\n\r"'`<>]*?\.md\b/);
+  return match ? match[0].trim() : '';
+}
+
+function compactNotificationText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
+function buildAgentRequestMessage(capture) {
+  const instruction = buildCaptureInstruction(capture);
+  const selected = capture.selectedText ? `\n\n选中文本：\n${capture.selectedText}` : '';
+
+  return [
+    '来自 OpenClaw Browser Host 的主动网页上下文。',
+    '',
+    instruction,
+    '',
+    `Capture ID: ${capture.captureId}`,
+    `Service: ${capture.service || capture.intent}`,
+    `Content Type: ${capture.contentLabel || capture.contentType || '网页'}`,
+    `Platform: ${capture.platform || 'web'}`,
+    `URL: ${capture.url}`,
+    `Title: ${capture.title || 'Untitled'}`,
+    `Captured At: ${capture.capturedAt}`,
+    selected,
+    '',
+    '页面正文预览：',
+    capture.textPreview || '(无正文预览)',
+    '',
+    '请把结果返回到当前 OpenClaw 会话；如果有适合继续浏览的链接或工作流建议，请生成可执行建议。'
+  ].filter((line) => line !== '').join('\n');
+}
+
+function buildCaptureInstruction(capture) {
+  if (capture.intent === 'knowledge') {
+    const ability = capture.ability || {};
+    const pluginPath = ability.localPath || '(未配置，请先在扩展设置中填写本机插件目录)';
+    const envFile = ability.envFile || '(默认读取插件目录下 .env，或由 OPENCLAW_MEDIA_NOTES_ENV_FILE 指定)';
+    const outputDir = ability.outputDir || '~/.openclaw/workspace/browser-notes';
+    const flags = ability.defaultFlags || '(按内容类型自行判断)';
+    return [
+      '请把这个页面转成 OpenClaw 本地知识库条目，不要只做摘要。',
+      `请优先使用浏览器插件自带能力模块「${ability.name || MEDIA_TO_NOTES_PLUGIN_NAME}」，不要依赖外部 Projects 目录里的旧 skill。`,
+      `能力模块 ID: ${ability.id || MEDIA_TO_NOTES_PLUGIN_ID}`,
+      `能力模块本机目录: ${pluginPath}`,
+      `能力模块入口: ${ability.entry || './run.sh'}`,
+      `环境配置: ${envFile}`,
+      `输出目录: ${outputDir}`,
+      `默认参数: ${flags}`,
+      '该能力应覆盖文章、GitHub 仓库、YouTube、Bilibili、Douyin、TikTok、抖音和通用网页/视频。',
+      '执行要求：进入能力模块目录后运行入口脚本，让入口脚本自行加载 .env、依赖和输出目录；Markdown 必须写入 OpenClaw workspace 下的输出目录。',
+      '如果能力模块目录或必要 token 缺失，请直接返回可操作的配置缺口，不要悄悄改用外部旧目录。',
+      '完成后请返回：处理状态、内容类型、笔记路径、TLDR、关键点、失败原因和下一步建议。'
+    ].join('\n');
+  }
+
+  if (capture.intent === 'relate') {
+    return [
+      '这是“找库内关联”请求，不要把它当成网页摘要，也不要重复生成知识笔记。',
+      '浏览器插件的主产物应是本地 Markdown 知识文稿；本请求要把该文稿接入 OpenClaw 的本地知识体系。',
+      '请优先利用已安装 skill：obsidian-qa 检索本地知识库，knowledge-graphify 发现 wikilink 关联。',
+      '如果能根据 URL、标题或正文预览定位到刚生成的笔记，请围绕该笔记工作；如果没有定位到，先用当前页面作为查询种子检索相关笔记。',
+      '默认不要自动改写已有笔记；knowledge-graphify 请先以 auto_write=false 或等价方式返回建议。',
+      '请返回：命中的本地笔记路径、3-5 个相关笔记/理由、建议 wikilink、建议下一步打开的 Obsidian 本地链接。'
+    ].join('\n');
+  }
+
+  if (capture.intent === 'research') {
+    return [
+      '这是“发起深研”请求，不要只做摘要，也不要重复生成知识笔记。',
+      '请把当前页面作为研究种子，优先利用已安装 skill：dsearch；必要时结合 obsidian-qa 做本地知识预检索。',
+      '如果 dsearch skill 要求研究口径确认，请返回可直接确认的研究 brief，而不是跳过确认流程。',
+      '研究 brief 必须包含：研究主题、不研究范围、核心问题、时间/地域/对象边界、预期交付物。',
+      '如果上下文已足够且 skill 允许启动，请按 dsearch 的交付契约创建独立研究目录，并把进度和最终报告路径回传。',
+      '请返回：研究口径、是否已启动、输出目录/报告路径、需要用户确认的问题。'
+    ].join('\n');
+  }
+
+  if (capture.intent === 'issue') {
+    return [
+      '这是“Issue 草案”请求，不要只做页面摘要，也不要重复生成知识笔记。',
+      '目标是把当前页面或已生成知识文稿转成可进入 Linear 看板的工作项草案。',
+      '请优先利用已安装 skill：linear-issues；创建草案前先检索相关 Obsidian 笔记和已有 Linear issue，避免重复提单。',
+      '默认只返回草案，不直接创建或更新 Linear；除非用户在 OpenClaw 会话中明确确认。',
+      '草案必须包含：标题、背景、目标、验收标准、关联 issue/文档、建议优先级和风险。',
+      '如果当前页面不适合转成工作项，请明确说明不适合，并给出更合适的处理方式。'
+    ].join('\n');
+  }
+
+  if (capture.intent === 'workflow' || capture.intent === 'next') {
+    return [
+      '这是“转成行动”请求，不要把它当成普通摘要，也不要生成知识库笔记。',
+      '目标是判断这个页面是否能变成用户当前工作的下一步。',
+      '请优先返回：建议动作、可能关联的项目/issue/文档、为什么相关、需要打开或恢复的链接。',
+      '如果页面只能提供背景信息，请给出最小下一步；如果没有可靠关联，请明确说“未发现明确工作关联”，不要编造项目。'
+    ].join('\n');
+  }
+
+  if (capture.intent === 'later' || capture.intent === 'save') {
+    return [
+      '这是“稍后处理”请求，请不要生成知识笔记，也不要做完整研究总结。',
+      '目标是把当前页面保存成以后能快速恢复上下文的短线索。',
+      '请返回：一句话线索标题、为什么值得稍后继续、恢复时第一步、关键词。',
+      '内容应短，方便从历史记录里快速找回，并避免扩写成项目计划。'
+    ].join('\n');
+  }
+
+  return [
+    '这是“快速读懂”请求，请只帮助用户扫清当前页面内容，不要生成知识库笔记，也不要做项目关联分析。',
+    '请返回：一句话结论、最多 3 个关键点、一个可选继续阅读方向。',
+    '控制在 150 字以内，适合直接显示在浏览器插件通知里。'
+  ].join('\n');
+}
+
+function normalizeSuggestion(args) {
+  const urls = Array.isArray(args.urls)
+    ? args.urls.filter(isWebUrl).slice(0, 10)
+    : [];
+  const source = ['openclaw', 'pattern-memory'].includes(args.source) ? args.source : 'openclaw';
+  const previewTitles = Array.isArray(args.previewTitles)
+    ? args.previewTitles
+      .map((title) => String(title || '').trim())
+      .filter(Boolean)
+      .slice(0, 4)
+    : [];
+
+  return {
+    id: args.id || args.suggestionId || crypto.randomUUID(),
+    title: (args.title || 'OpenClaw suggestion').slice(0, 120),
+    message: (args.message || args.body || '').slice(0, 500),
+    urls,
+    previewTitles,
+    reason: (args.reason || '').slice(0, 180),
+    evidence: normalizeSuggestionEvidence(args.evidence),
+    patternId: args.patternId || '',
+    source,
+    kind: (args.kind || (source === 'pattern-memory' ? 'related-pattern' : 'openclaw')).slice(0, 80),
+    confidence: Number.isFinite(Number(args.confidence)) ? Number(args.confidence) : undefined,
+    matchedBy: args.matchedBy || '',
+    trigger: args.trigger || '',
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function normalizeSuggestionEvidence(evidence) {
+  if (!evidence || typeof evidence !== 'object') {
+    return {};
+  }
+  return {
+    tokenOverlap: Number(evidence.tokenOverlap || 0),
+    cooccurrenceCount: Number(evidence.cooccurrenceCount || 0),
+    useCount: Number(evidence.useCount || 0),
+    acceptedCount: Number(evidence.acceptedCount || 0),
+    dismissCount: Number(evidence.dismissCount || 0)
+  };
+}
+
+function suggestionPreviewTitles(tabs) {
+  const seen = new Set();
+  const titles = [];
+  for (const tab of tabs) {
+    const title = cleanSuggestionTitle(tab?.title) || originLabel(tab?.url);
+    if (!title || seen.has(title)) {
+      continue;
+    }
+    seen.add(title);
+    titles.push(title);
+    if (titles.length >= 3) {
+      break;
+    }
+  }
+  return titles;
+}
+
+function cleanSuggestionTitle(title) {
+  return String(title || '')
+    .replace(/\s+-\s+闲置标签页\s+-\s+已释放.*$/u, '')
+    .replace(/\s+-\s+Google\s+搜索$/u, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+}
+
+function originLabel(url) {
+  if (!isWebUrl(url)) {
+    return '';
+  }
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function normalizeCaptureIntent(intent) {
+  return ['knowledge', 'relate', 'research', 'issue', 'summarize', 'workflow', 'later', 'save', 'next'].includes(intent) ? intent : 'relate';
+}
+
+function normalizePageService(service) {
+  if (service === 'save') {
+    return 'later';
+  }
+  if (service === 'next') {
+    return 'workflow';
+  }
+  return ['knowledge', 'relate', 'research', 'issue', 'summarize', 'workflow', 'later'].includes(service) ? service : 'relate';
+}
+
+function buildPageAbility(config, service, pageType) {
+  if (service !== 'knowledge') {
+    const serviceAbilities = {
+      relate: {
+        id: 'openclaw-knowledge-relations',
+        name: 'Obsidian QA + Knowledge Graphify',
+        skills: ['obsidian-qa', 'knowledge-graphify']
+      },
+      research: {
+        id: 'openclaw-dsearch',
+        name: 'DSearch',
+        skills: ['dsearch', 'obsidian-qa']
+      },
+      issue: {
+        id: 'openclaw-linear-issues',
+        name: 'Linear Issues',
+        skills: ['linear-issues', 'obsidian-qa']
+      }
+    };
+    const ability = serviceAbilities[service] || {
+      id: 'openclaw-page-context',
+      name: 'OpenClaw Page Context',
+      skills: []
+    };
+    return {
+      ...ability,
+      owner: 'openclaw',
+      contentType: pageType.contentType,
+      platform: pageType.platform
+    };
+  }
+
+  return {
+    id: MEDIA_TO_NOTES_PLUGIN_ID,
+    name: MEDIA_TO_NOTES_PLUGIN_NAME,
+    owner: 'browser-extension',
+    bundled: true,
+    enabled: Boolean(config.mediaToNotesEnabled),
+    localPath: cleanConfigString(config.mediaToNotesPluginPath),
+    entry: './run.sh',
+    envFile: cleanConfigString(config.mediaToNotesEnvFile),
+    outputDir: cleanConfigString(config.mediaToNotesOutputDir) || DEFAULT_CONFIG.mediaToNotesOutputDir,
+    defaultFlags: cleanConfigString(config.mediaToNotesDefaultFlags),
+    contentType: pageType.contentType,
+    platform: pageType.platform,
+    supportsCurrentPage: Boolean(pageType.knowledgeSupported),
+    requiredEnv: ['MEDIA_API_KEY'],
+    optionalEnv: ['OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_MODEL', 'DEEPGRAM_API_KEY', 'GITHUB_TOKEN']
+  };
+}
+
+function cleanConfigString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function detectPageServiceType(url) {
+  if (!isWebUrl(url)) {
+    return {
+      contentType: 'webpage',
+      label: '网页',
+      platform: 'web',
+      knowledgeSupported: false
+    };
+  }
+
+  const parsed = new URL(url);
+  const hostname = parsed.hostname.replace(/^www\./, '').toLowerCase();
+  const pathname = parsed.pathname;
+
+  if (hostname === 'github.com' && pathname.split('/').filter(Boolean).length >= 2) {
+    return {
+      contentType: 'github-repository',
+      label: 'GitHub 仓库',
+      platform: 'github',
+      knowledgeSupported: true
+    };
+  }
+
+  if (hostname === 'youtu.be' || hostname.endsWith('youtube.com')) {
+    return {
+      contentType: 'video',
+      label: 'YouTube 视频',
+      platform: 'youtube',
+      knowledgeSupported: true
+    };
+  }
+
+  if (hostname.endsWith('bilibili.com')) {
+    return {
+      contentType: 'video',
+      label: 'Bilibili 视频',
+      platform: 'bilibili',
+      knowledgeSupported: true
+    };
+  }
+
+  if (hostname.endsWith('douyin.com')) {
+    return {
+      contentType: 'video',
+      label: '抖音视频',
+      platform: 'douyin',
+      knowledgeSupported: true
+    };
+  }
+
+  if (hostname.endsWith('tiktok.com')) {
+    return {
+      contentType: 'video',
+      label: 'TikTok 视频',
+      platform: 'tiktok',
+      knowledgeSupported: true
+    };
+  }
+
+  const articleHosts = ['medium.com', 'substack.com', 'zhihu.com', 'juejin.cn', 'mp.weixin.qq.com'];
+  const isKnownArticle = articleHosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+  return {
+    contentType: isKnownArticle ? 'article' : 'webpage',
+    label: isKnownArticle ? '文章' : '网页',
+    platform: isKnownArticle ? hostname : 'web',
+    knowledgeSupported: true
+  };
+}
+
+function normalizePatternSuggestionState(state) {
+  return {
+    lastShownAtByPattern: state?.lastShownAtByPattern || {},
+    dismissedUntilByPattern: state?.dismissedUntilByPattern || {}
+  };
+}
+
+async function updateActionBadge(count) {
+  const suggestionCount = Number.isFinite(Number(count))
+    ? Number(count)
+    : (await chrome.storage.local.get([SUGGESTIONS_STORAGE_KEY]))[SUGGESTIONS_STORAGE_KEY]?.length || 0;
+  await chrome.action.setBadgeBackgroundColor({ color: '#0a7f42' });
+  await chrome.action.setBadgeText({
+    text: suggestionCount > 0 ? String(Math.min(suggestionCount, 9)) : ''
+  });
+}
+
+function normalizeCaptureSessionKey(sessionKey) {
+  return typeof sessionKey === 'string' && sessionKey.trim()
+    ? sessionKey.trim()
+    : DEFAULT_CAPTURE_SESSION_KEY;
+}
+
+function canonicalizeOpenClawSessionKey(sessionKey) {
+  const normalized = normalizeCaptureSessionKey(sessionKey);
+  return normalized.startsWith('agent:') ? normalized : `agent:main:${normalized}`;
+}
+
+function deriveOpenClawSessionKeys(sessionKey) {
+  const normalized = normalizeCaptureSessionKey(sessionKey);
+  return [...new Set([normalized, canonicalizeOpenClawSessionKey(normalized)])];
+}
+
+function summarizePatternForEvent(pattern) {
+  const urls = (pattern.tabs || []).map((tab) => tab.url).filter(Boolean);
+  return {
+    id: pattern.id,
+    name: pattern.name,
+    source: pattern.source,
+    savedAt: pattern.savedAt,
+    firstSeenAt: pattern.firstSeenAt,
+    lastSeenAt: pattern.lastSeenAt,
+    cooccurrenceCount: pattern.cooccurrenceCount,
+    confidence: pattern.confidence,
+    urlCount: urls.length,
+    origins: uniqueOrigins(urls)
+  };
+}
+
+function uniqueOrigins(urls) {
+  return [...new Set(urls.filter(isWebUrl).map((url) => new URL(url).origin))];
+}
+
+function isWebUrl(url) {
+  return typeof url === 'string' &&
+    (url.startsWith('http://') || url.startsWith('https://'));
 }
 
 async function userConfirm(args) {

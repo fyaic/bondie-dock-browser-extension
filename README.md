@@ -6,7 +6,7 @@ OpenClaw Browser Host Extension 是新的浏览器插件主线，用于替代或
 
 2026-05-15 产品会议后，浏览器插件路线升级为“浏览器智能工作流 Agent 门户”。后续主线不再只是远程宿主，而是围绕 Pattern Memory、Context Capture 和 OpenClaw Recap 主动建议构建产品体验。会议需求整理见 [浏览器智能工作流 Agent 产品化需求整理](docs/product-requirements-2026-05-15.md)。
 
-当前版本：`0.1.0-alpha.7`。
+当前版本：`0.1.0-alpha.11`。
 
 ## 当前结论
 
@@ -104,6 +104,7 @@ Edge:
 - OpenClaw browser-extension node 客户端：Ed25519 设备身份、`connect.challenge`、签名 `connect`、`hello-ok`、deviceToken 持久化、`node.invoke.request` / `node.invoke.result`、`node.event`。
 - 连接生命周期与配对生命周期分离：paired 只表示设备已授权，online/offline 才表示 WebSocket 当前状态；断线重连不再制造重复配对体验，popup 也按“在线 / 已配对，重连中 / 等待配对”展示。
 - Gateway 协议对齐记录见 [Gateway 协议对齐记录](docs/gateway-protocol-notes.md)。
+- 0.1.0-alpha.11 对齐 Gateway protocol 4，`node-compatible` 握手声明 `minProtocol/maxProtocol = 4`，并使用 `node.presence.alive` 做 node role 心跳。
 - 0.1.0-alpha.7 增加 MV3 keepalive / 快速重连，并修正 paired 状态持久化；远端真实 Gateway 仍需继续做长时间在线验证。
 
 下一阶段产品化能力：

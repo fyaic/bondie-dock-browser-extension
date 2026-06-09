@@ -1,0 +1,37 @@
+{
+  "createdAt": "2026-05-25T03:11:29.724Z",
+  "repoRoot": "/Users/fuyo-aic/Projects/openclaw-browser-host-extension",
+  "outputDir": "/Users/fuyo-aic/Projects/openclaw-browser-host-extension/.liev/handoff",
+  "request": "Use Liev/Symphony to push docs/ai-handoff-browser-workflow-agent.md for openclaw-browser-host-extension; do not modify main; create work on an isolated branch",
+  "repo": "veil-chow-fyaic/openclaw-browser-host-extension",
+  "type": "browser-extension",
+  "approved": true,
+  "workspaceContract": {
+    "mode": "embedded",
+    "ready": true
+  },
+  "planningGate": {
+    "planningStatus": "ready",
+    "recommendedNextAction": "bootstrap",
+    "runnable": true,
+    "riskSignals": [
+      "browser",
+      "extension"
+    ],
+    "missingFacts": [],
+    "blockers": []
+  },
+  "artifactGate": {
+    "ready": true,
+    "type": "browser-extension",
+    "findings": []
+  },
+  "readyForBootstrap": true,
+  "blockers": [],
+  "nextActions": [
+    "Create or update the Linear parent issue from issue-drafts.md.",
+    "Create the runnable child issue from issue-drafts.md.",
+    "Paste execution-contract.md into the child issue before enqueue.",
+    "Run liev-bootstrap preflight before moving the child issue to Todo."
+  ]
+}

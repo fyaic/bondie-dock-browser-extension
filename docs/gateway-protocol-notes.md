@@ -35,6 +35,14 @@
 - 本地 mock Gateway 已验证 Ed25519 签名 `connect`、`hello-ok`、deviceToken 保存、`node.invoke.request` 和 `node.invoke.result`。
 - 下一步需要用真实 Gateway 验证 node WebSocket path、Origin 策略、GatewayToken/BootstrapToken 和 approve 流程。
 
+2026-06-09 protocol 4 / heartbeat hotfix：
+
+- Gateway 2026.5.22 期望 protocol 4。
+- Browser Host extension `0.1.0-alpha.11` 在 `node-compatible` 握手中声明 `minProtocol/maxProtocol = 4`。
+- `node-compatible` 心跳使用 `node.event` / `node.presence.alive`，避免 node role 调用 RPC `ping` 被 Gateway 拒绝。
+- 本地已安装实例的扩展 ID：`cljflebfgmekmnojaiaonfdjcmoonbpf`。
+- 旧版 `0.1.0-alpha.7` 的 Gateway 日志症状：`code=1002 reason=protocol mismatch`，并伴随 `min=3 max=3 expected=4 probeMin=4`。
+
 ## 插件当前声明能力
 
 - `browser.notify`
@@ -68,11 +76,11 @@
   "id": "<request-id>",
   "method": "connect",
   "params": {
-    "minProtocol": 3,
-    "maxProtocol": 3,
+    "minProtocol": 4,
+    "maxProtocol": 4,
     "client": {
       "id": "node-host",
-      "version": "0.1.0-alpha.7",
+      "version": "0.1.0-alpha.11",
       "platform": "browser",
       "mode": "node",
       "displayName": "OpenClaw Browser Host"

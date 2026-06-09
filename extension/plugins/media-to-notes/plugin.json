@@ -1,0 +1,45 @@
+{
+  "id": "media-to-notes",
+  "name": "Media to Notes",
+  "version": "3.0.0-browser-host.1",
+  "description": "Browser Host owned knowledge pipeline for turning articles, GitHub repositories, and video links into local Markdown notes.",
+  "entry": "./run.sh",
+  "pipeline": "./scripts/run-pipeline.sh",
+  "defaultOutputDir": "${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}/browser-notes",
+  "requiredRuntime": [
+    "python3",
+    "requests",
+    "readability-lxml",
+    "markdownify",
+    "lxml"
+  ],
+  "optionalRuntime": [
+    "yt-dlp",
+    "ffmpeg",
+    "playwright"
+  ],
+  "requiredEnv": [
+    "MEDIA_API_KEY"
+  ],
+  "optionalEnv": [
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "OPENAI_MODEL",
+    "DEEPGRAM_API_KEY",
+    "GITHUB_TOKEN",
+    "WEB_FETCH_YT_DLP",
+    "WEB_FETCH_FFMPEG",
+    "DOUYIN_COOKIE_FILE"
+  ],
+  "supports": [
+    "article-url",
+    "github-repository-url",
+    "youtube-video-url",
+    "bilibili-video-url",
+    "douyin-video-url",
+    "tiktok-video-url",
+    "generic-webpage-url",
+    "local-media-file"
+  ],
+  "ownedBy": "openclaw-browser-host-extension"
+}

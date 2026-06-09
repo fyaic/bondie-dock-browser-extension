@@ -1,0 +1,25 @@
+{
+  "createdAt": "2026-06-02T16:20:00+08:00",
+  "laneId": "openclaw-browser-host-extension",
+  "projectSlug": "liev-openclaw-browser-workflow-agent-144f29e2b7c3",
+  "repo": "veil-chow-fyaic/openclaw-browser-host-extension",
+  "workspaceRoot": "/Users/fuyo-aic/code/liev-symphony-workspaces-openclaw-browser-host-extension",
+  "activeWave": [
+    "AIC-2735"
+  ],
+  "childIssues": [
+    "AIC-2735"
+  ],
+  "dependencyOrder": [
+    "AIC-2735"
+  ],
+  "forbidden": [
+    "ACP adapter/runtime/delivery queue",
+    "WeCom channel or extension",
+    "enterprise WeChat send/receive",
+    "unrelated gateway server edits",
+    "auto-merge"
+  ],
+  "validation": "python3 -m json.tool extension/manifest.json >/dev/null && node --check extension/src/background.js && node --check extension/src/content.js && node --check extension/src/options.js && node --check extension/src/popup.js && node --check extension/src/confirm.js && ./scripts/package-extension.sh",
+  "closureCommand": "node runtime/node/liev-lanes.mjs closure openclaw-browser-host-extension --issues AIC-2735"
+}

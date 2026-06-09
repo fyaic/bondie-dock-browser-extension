@@ -2,7 +2,7 @@
 
 日期：2026-05-19
 
-当前版本：0.1.0-alpha.7
+当前版本：0.1.0-alpha.11
 
 产品主线：浏览器智能工作流 Agent 门户。详见 [product-requirements-2026-05-15.md](product-requirements-2026-05-15.md)。
 
@@ -27,6 +27,8 @@
   - `node.event`。
 - paired 与 online 生命周期分离，重连不再制造重复配对体验。
 - MV3 keepalive / 快速重连。
+- Gateway protocol 4 兼容，`node-compatible` 握手声明 `minProtocol/maxProtocol = 4`。
+- `node-compatible` 心跳使用 `node.presence.alive`，不再调用 node role 无权访问的 RPC `ping`。
 - Chrome for Testing 本地烟测、mock Gateway 协议验证、真实 Chrome 插件加载和在线验证。
 
 ## P0：Pattern Memory MVP

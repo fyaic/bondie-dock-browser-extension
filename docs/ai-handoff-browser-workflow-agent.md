@@ -21,7 +21,7 @@
 
 ## 当前进展
 
-当前版本：`0.1.0-alpha.7`
+当前版本：`0.1.0-alpha.11`
 
 已完成：
 
@@ -38,6 +38,8 @@
 - 下载摘要。
 - 用户确认弹窗。
 - MV3 keepalive / 快速重连。
+- Gateway protocol 4 兼容，`node-compatible` 握手声明 `minProtocol/maxProtocol = 4`。
+- `node-compatible` 心跳使用 `node.presence.alive`，不再调用 node role 无权访问的 RPC `ping`。
 - paired 与 online 生命周期分离：
   - `paired` 只表示设备已授权。
   - `online/offline` 才表示当前 WebSocket 状态。
