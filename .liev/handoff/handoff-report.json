@@ -3,7 +3,8 @@
   "repoRoot": "/Users/fuyo-aic/Projects/openclaw-browser-host-extension",
   "outputDir": "/Users/fuyo-aic/Projects/openclaw-browser-host-extension/.liev/handoff",
   "request": "Use Liev/Symphony to push docs/ai-handoff-browser-workflow-agent.md for openclaw-browser-host-extension; do not modify main; create work on an isolated branch",
-  "repo": "veil-chow-fyaic/openclaw-browser-host-extension",
+  "repo": "fyaic/openclaw-browser-host-extension",
+  "supersededBy": "Current alpha.11 handoff in .liev/brief.md, .liev/design.md, .liev/plan.md and docs/manual-handoff-2026-06-09.md",
   "type": "browser-extension",
   "approved": true,
   "workspaceContract": {

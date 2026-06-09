@@ -31,7 +31,18 @@
 - `node-compatible` 心跳使用 `node.presence.alive`，不再调用 node role 无权访问的 RPC `ping`。
 - Chrome for Testing 本地烟测、mock Gateway 协议验证、真实 Chrome 插件加载和在线验证。
 
-## P0：Pattern Memory MVP
+## P0：页面智能服务闭环
+
+- 主按钮固定为“生成知识笔记”，避免首页多个相似动作分散重心。
+- 识别文章、GitHub 仓库、YouTube/Bilibili/Douyin/TikTok 等页面类型。
+- 触发 OpenClaw 调用 `extension/plugins/media-to-notes`。
+- Media to Notes 依赖、env、token、输出目录进入设置页。
+- 产物默认写入 OpenClaw workspace 下的 browser notes 目录。
+- 通知卡片展示处理中、完成、失败、TLDR 和 Markdown 路径。
+- 历史页保留所有处理记录，可关闭首页通知但不丢历史。
+- 日常 Chrome Default profile reload 状态要在安装/更新说明中明确。
+
+## P1：Pattern Memory 智能感知
 
 - 定义 Pattern 数据结构。
 - 使用 `chrome.tabs` / `chrome.windows` 采集 tabs/windows 快照。
@@ -42,12 +53,12 @@
   - 同一窗口内 URL/origin 共现。
   - 多次快照重复出现提升 confidence。
   - 过滤浏览器内部页、搜索结果页和低价值页面。
-- 支持“保存当前窗口为 Pattern”。
-- Popup 展示最近 Patterns。
+- 支持“保存当前窗口为可恢复页面组”。
+- Popup 只在建议可信时展示“可恢复页面/相关页面”，不直接暴露 Pattern Memory 内部术语。
 - 一键打开 Pattern 里的链接。
 - 打开匹配页面时生成候选建议。
 
-## P0：Context Capture MVP
+## P1：Context Capture / OpenClaw Recap
 
 - Popup 增加“发送当前页给 OpenClaw”入口。
 - 支持 capture 类型：
@@ -58,10 +69,6 @@
 - Capture payload 包含 URL、title、selectedText、textPreview、capturedAt。
 - 通过现有 OpenClaw node event 上报。
 - 保持用户主动触发，不默认读取页面正文。
-- 记录 capture 成功/失败状态，方便用户确认。
-
-## P0：OpenClaw Recap / Suggestion 协议
-
 - 设计最小事件：
   - `browser.pattern.snapshot`
   - `browser.pattern.detected`

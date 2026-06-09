@@ -22,7 +22,7 @@ After the fix, the installed Chrome extension can connect to `ws://127.0.0.1:187
 
 ## Scope
 
-- Target repo: `veil-chow-fyaic/openclaw-browser-host-extension`.
+- Target repo: `fyaic/openclaw-browser-host-extension`.
 - Target local repo: `/Users/fuyo-aic/Projects/openclaw-browser-host-extension`.
 - Extension id in the failing install: `cljflebfgmekmnojaiaonfdjcmoonbpf`.
 - Update Browser Host extension protocol declaration/handshake to support gateway protocol 4.
@@ -41,10 +41,10 @@ After the fix, the installed Chrome extension can connect to `ws://127.0.0.1:187
 
 ## Architecture Notes
 
-- `extension/src/background.js` currently declares `const NODE_PROTOCOL_VERSION = 3`.
-- `sendOpenClawNodeConnect()` sends both `minProtocol` and `maxProtocol` as `NODE_PROTOCOL_VERSION`.
-- Current gateway expects protocol 4 and rejects `min=3 max=3` during WebSocket connect.
-- The smallest likely fix is to make the extension support/advertise protocol 4 and verify the existing connect payload shape still satisfies gateway 2026.5.22.
+- Original alpha.7 code declared `const NODE_PROTOCOL_VERSION = 3`.
+- alpha.11 declares protocol 4 and sends both `minProtocol` and `maxProtocol` as 4.
+- The follow-up fix also replaced node-role RPC `ping` heartbeat with `node.event` / `node.presence.alive`.
+- Current validation should check both the old protocol mismatch and the later node-role heartbeat authorization error.
 - If gateway protocol 4 requires payload shape changes beyond the version number, implement only the Browser Host extension-side compatibility needed for connect/pair/invoke smoke.
 
 ## Risks

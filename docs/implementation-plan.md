@@ -13,9 +13,9 @@
 - 与 Windows exe 路线差异。
 - 浏览器插件安装、权限、MV3 service worker 限制说明。
 
-## 阶段 1：浏览器宿主 PoC
+## 阶段 1：浏览器宿主 / Gateway 稳定性
 
-状态：已完成 alpha.7。
+状态：已完成到 alpha.11。
 
 目标：验证浏览器插件作为 OpenClaw client host 的可行性。
 
@@ -42,6 +42,9 @@
 - 插件能通过 content script 获取页面摘要。
 - 插件能弹出用户确认窗口并回传结果。
 - 插件能连接真实 OpenClaw Gateway 并保持在线。
+- Gateway protocol 4 已对齐。
+- stale deviceToken 可自动恢复。
+- node role 心跳已改为 `node.presence.alive`，避免 RPC `ping` 权限错误。
 
 ## 阶段 2：产品方向调整
 
@@ -61,50 +64,49 @@
 - [todo.md](todo.md)
 - [architecture.md](architecture.md)
 
-## 阶段 3：Pattern Memory MVP
+## 阶段 3：页面智能服务闭环
 
-状态：待启动。
+状态：alpha.11 已有工程底座，下一步做产品闭环。
 
-目标：让插件能记住“这些页面通常一起打开”，并支持一键恢复工作流。
+目标：用户点击“生成知识笔记”后，OpenClaw 在本地 workspace 产出 Markdown，并把 TLDR/路径回传到插件。
 
 范围：
 
-- 定义 Pattern 数据结构。
-- 每小时采集 tabs/windows 快照。
-- 本地存储快照与 Patterns。
-- 简单共现分析。
-- 手动保存当前窗口为 Pattern。
-- Popup 展示 Patterns。
-- 一键打开 Pattern。
-- 打开匹配页面时生成候选建议。
+- 页面类型识别。
+- OpenClaw `agent.request` / Media to Notes 调用。
+- Media to Notes env、token、输出目录设置。
+- 处理中/完成/失败通知卡片。
+- 历史页追溯。
+- Markdown 路径回传。
 
 验收：
 
-- 手动保存当前窗口后，可在 popup 看到 Pattern。
-- 点击 Pattern 可打开对应链接。
-- 多次快照后，可自动生成候选 Pattern。
-- 打开 Pattern 中任一页面时，插件能提示关联链接。
+- 普通文章页面可生成知识笔记。
+- GitHub repo 页面可生成知识笔记。
+- 视频页面可进入 Media to Notes 管线。
+- 失败时用户能看到可操作错误。
+- 完成后插件展示 TLDR 和 Markdown 路径。
+
+## 阶段 4：Pattern Memory 智能感知
+
+状态：已有初版，待产品化验证。
+
+目标：从“手动保存/恢复”升级为可信的自动建议。
+
+范围：
+
+- tabs/windows 快照保留。
+- 共现关系质量提升。
+- 搜索页、低价值页过滤。
+- 可恢复页面/相关页面建议。
+- accept/dismiss/稍后/不再提示反馈。
+
+验收：
+
+- 自动建议出现频率低但有用。
+- 用户能理解建议来源。
+- 首页不出现 `Pattern Memory` 这类内部术语。
 - 用户可关闭采集、清空本地数据。
-
-## 阶段 4：Context Capture MVP
-
-状态：待启动。
-
-目标：用户浏览任意页面时，可在上下文内把页面信息发送给 OpenClaw。
-
-范围：
-
-- Popup 增加“发送当前页给 OpenClaw”。
-- 支持记录、总结、保存选中文本、关联到当前工作。
-- 上报当前 URL、title、selectedText、textPreview、capturedAt。
-- 通过 OpenClaw node event 发送。
-- UI 展示成功/失败结果。
-
-验收：
-
-- 用户主动点击 capture 后，OpenClaw 能收到 `browser.context.capture`。
-- 未经用户主动触发时，插件不读取页面正文。
-- Capture 失败时用户能看到错误原因。
 
 ## 阶段 5：OpenClaw Recap / Suggestion
 

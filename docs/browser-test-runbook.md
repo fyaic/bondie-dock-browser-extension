@@ -1,11 +1,11 @@
 # 浏览器插件手工测试 Runbook
 
-日期：2026-05-13
-版本：0.1.0-alpha.2
+日期：2026-06-09
+版本：0.1.0-alpha.11
 
 ## 目标
 
-验证 OpenClaw Browser Host Extension 能在 Chrome / Edge 中作为 unpacked extension 加载，并完成浏览器侧宿主 PoC 的基础能力测试。
+验证 OpenClaw Browser Host Extension 能在 Chrome / Edge 中作为 unpacked extension 加载，完成 OpenClaw node-compatible protocol 4 连接，并覆盖当前页面智能服务、通知/历史、Pattern Memory 建议和二级开发工具的基础测试。
 
 ## 前置条件
 
@@ -18,7 +18,7 @@
 
 ## 加载插件
 
-注意：Chrome/Edge 的 `manifest.version` 必须是数字版本号，仓库使用 `version: 0.1.0` 和 `version_name: 0.1.0-alpha.2`。
+注意：Chrome/Edge 的 `manifest.version` 必须是数字版本号，当前仓库使用 `version: 0.1.11` 和 `version_name: 0.1.0-alpha.11`。
 
 ## 自动化测试备注
 
@@ -65,25 +65,38 @@ Edge:
 3. 点击保存。
 4. 重新打开 Options，确认配置仍在。
 
-### Popup 自测
+### Popup 首页
 
 打开任意普通网页后，点击插件图标：
 
-- 点击“测试通知”，浏览器应出现通知。
-- 点击“当前 Tab”，结果应包含当前页面 title/url。
-- 点击“页面摘要”，结果应包含 title/url/selection/textPreview。
-  - 第一次对某个站点使用时，浏览器会要求授予该站点访问权限。
-- 点击“下载摘要”，结果应返回最近下载元数据。
-- 点击“确认弹窗”，应弹出确认窗口，点击允许/拒绝后返回结果。
+- 顶部状态应显示“在线 / 已配对，重连中 / 等待配对”等连接状态。
+- “当前页面”栏应显示当前页面标题或 URL，并识别普通网页、文章、视频或 GitHub 仓库。
+- 点击“入库为知识笔记”，应进入处理中状态，并把当前页面交给 OpenClaw / Media to Notes 页面智能服务。
+- 点击“找库内关联”“发起深研”“Issue 草案”，应生成对应 OpenClaw 任务请求，并在通知栏出现处理中或完成反馈。
+- 第一次对某个站点读取页面内容时，浏览器会要求授予该站点访问权限。
+- “通知”栏应展示最近处理记录；点击单条记录的关闭按钮后，该记录应从当前 popup 中消失。
+- 点击“历史”应打开历史页，能看到之前处理过的记录、TLDR 和产物路径。
+- “可恢复页面”栏应展示 Pattern Memory 的本地建议；点击“刷新页面关联”应重新扫描当前页面关联。
+
+### 设置和开发工具
+
+点击右上角设置按钮：
+
+- 连接通道应显示当前 OpenClaw 本地通道状态。
+- 知识能力应显示 Media to Notes / 页面智能服务配置状态。
+- 点击“固定当前窗口组合”应保存当前窗口的可恢复页面组合。
+- “保存的工作流”应展示本地保存的 Pattern。
+- 开发工具区中的“测试通知”“当前 Tab”“页面摘要”“下载摘要”“确认弹窗”仍应可用。
 
 ## Gateway 测试
 
-当前 Gateway 消息格式仍是 PoC，尚未对齐真实 OpenClaw browser node 协议。
+当前默认使用 OpenClaw node-compatible protocol 4。
 
-可先验证：
+可验证：
 
 - Gateway URL 为空时，连接按钮返回明确错误。
-- Gateway URL 指向可用 WebSocket echo/server 时，状态可进入连接。
+- Gateway URL 指向本地 OpenClaw Gateway 时，扩展按 `minProtocol/maxProtocol = 4` 连接。
+- service worker 日志不应再出现旧版 `protocol mismatch`。
 - 断开按钮会关闭连接。
 
 ## 预期限制

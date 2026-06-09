@@ -18,7 +18,7 @@ Make `OpenClaw Browser Host` Chrome extension compatible with OpenClaw gateway p
 
 ### Repo
 
-`https://github.com/veil-chow-fyaic/openclaw-browser-host-extension`
+`https://github.com/fyaic/openclaw-browser-host-extension`
 
 ### Validation
 

@@ -6,7 +6,7 @@
 
 ## 给接手 AI 的一句话任务
 
-继续把当前 Chrome / Edge 插件从“OpenClaw 浏览器侧宿主 PoC”推进为“浏览器智能工作流 Agent 门户”。当前最重要的产品方向是 Pattern Memory、Context Capture、OpenClaw Recap / Suggestion，而不是继续只做通知或远程调用。
+继续把当前 Chrome / Edge 插件从早期“OpenClaw 浏览器侧宿主”推进为“浏览器智能工作流 Agent 门户”。当前最重要的产品方向是页面智能服务闭环、Media to Notes 知识笔记能力、Pattern Memory 真感知，以及 OpenClaw 侧的处理反馈，而不是继续只做通知或远程调用。
 
 ## 背景
 
@@ -45,70 +45,57 @@
   - `online/offline` 才表示当前 WebSocket 状态。
   - 重连不应弹“已配对”类用户通知。
 - zip 打包脚本和快速安装文档。
+- Media to Notes 能力已复制到 `extension/plugins/media-to-notes`，作为插件内置能力模块。
+- Popup 首页已收敛为当前页面主行动、最近处理/历史和二级设置入口。
+- 历史页、通知卡片和处理记录的基础形态已落地。
+- Pattern Memory 已有本地快照/建议/恢复的工程底座，但智能感知质量仍需继续打磨。
 
 已验证：
 
 - Chrome 能加载 unpacked extension。
 - 插件能连接真实 OpenClaw Gateway。
 - 本地通知测试通过。
-- 真实 Chrome 在线状态验证通过。
+- alpha.11 在 CLI/CDP 非默认 profile 中验证通过：service worker 版本 `0.1.11`，连接状态 `connected/registered/online=true`，并持续写入 `lastHeartbeatAt`。
 - 静态检查和打包流程可跑通。
 
 ## 当前未完成
 
-产品主线能力尚未实现：
+产品主线还没有达到可分发产品标准：
 
-- Pattern 数据模型。
-- 每小时 tabs/windows 快照。
-- Pattern 本地存储和保留策略。
-- 简单共现关系分析。
-- 手动保存当前窗口为 Pattern。
-- Pattern 列表和一键打开。
-- 打开匹配页面时的轻量建议。
-- Context Capture 产品化入口。
-- OpenClaw Recap / Suggestion 协议。
-- 建议展示、accept/dismiss 回传。
-- Pattern / capture 权限和隐私开关。
-- Agent provider 抽象。
-- The Tailor / Bondie / OpenClaw Browser Host 品牌命名决策。
+- “生成知识笔记”链路需要和本地 OpenClaw workspace 产物、TLDR、失败重试和通知卡片完全闭环。
+- Media to Notes 依赖、env、token、输出目录需要形成安装/设置体验，而不是只放代码。
+- Pattern Memory 需要从“手动保存/恢复”升级为可信自动感知，首页不应暴露抽象内部术语。
+- 日常 Chrome Default profile 可能仍需用户在 `chrome://extensions` 手动 Reload，让 service worker 从旧版本切到 `0.1.11`。
+- Chrome Web Store / Edge Add-ons、Native Messaging、本地安装器和多 Agent provider 都暂缓。
 
 ## 近期最高优先级
 
 优先做 P0，不要过早做复杂品牌、多 Agent 或 Native Messaging。
 
-### P0.1 Pattern Memory MVP
+### P0.1 页面智能服务闭环
 
-目标：让插件能记住“这些网页通常一起打开”，并支持用户一键恢复。
-
-最小闭环：
-
-1. 定义 Pattern 数据结构。
-2. 用 `chrome.tabs` / `chrome.windows` 采集当前窗口和标签页快照。
-3. 用 `chrome.alarms` 每小时保存一次快照。
-4. 本地保存快照和 Patterns，设置最大保留量。
-5. 支持手动保存当前窗口为 Pattern。
-6. Popup 展示本地 Patterns。
-7. 点击 Pattern 一键打开所有链接。
-8. 实现简单共现分析，自动生成候选 Pattern。
-
-约束：
-
-- 首期只记录 URL、origin、title、windowId、tabId、active、pinned、timestamp。
-- 不默认读取页面正文。
-- 不上传完整浏览历史。
-- 先本地可用，再做 OpenClaw Recap 上传。
-
-### P0.2 Context Capture MVP
-
-目标：用户浏览任意页面时，可以主动把当前页面上下文发给 OpenClaw。
+目标：用户在浏览器里点击一次，即可把当前页面交给 OpenClaw 处理为本地知识笔记。
 
 最小闭环：
 
-1. Popup 增加“发送当前页给 OpenClaw”。
-2. 支持记录当前页、总结当前页、保存选中文本、关联到当前工作。
-3. Capture payload 包含 URL、title、selectedText、textPreview、capturedAt。
-4. 通过现有 OpenClaw node event 上报 `browser.context.capture`。
-5. UI 展示发送成功/失败。
+1. Popup 主按钮固定为“生成知识笔记”。
+2. 插件采集 URL、title、selectedText、textPreview 和页面类型。
+3. 插件把请求交给 OpenClaw，并指定内置 `media-to-notes` 能力目录、env 和输出目录。
+4. OpenClaw 在本地 workspace 写入 Markdown。
+5. OpenClaw 回传处理中/完成/失败、TLDR 和文件路径。
+6. 插件展示通知卡片，历史页可追溯。
+
+### P0.2 Pattern Memory 智能感知
+
+目标：让插件能可靠识别“这些网页通常一起打开”，并在低打扰场景下给出可恢复建议。
+
+最小闭环：
+
+1. 继续使用本地 tab/window 快照和保留策略。
+2. 优化共现分析、过滤低价值页面和搜索结果页。
+3. 将建议表达为“可恢复页面/相关页面”，不要在首页显示 Pattern Memory 内部概念。
+4. 支持接受、忽略、稍后、不再提示。
+5. 只有当自动建议足够可信后才放到首页。
 
 约束：
 

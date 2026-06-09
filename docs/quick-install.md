@@ -110,7 +110,7 @@ user.confirm
 
 ### 为什么不是双击安装？
 
-Chrome / Edge 对浏览器插件有安全限制。PoC 内测阶段使用 unpacked extension；产品化分发建议走 Chrome Web Store、Edge Add-ons，或企业策略分发。
+Chrome / Edge 对浏览器插件有安全限制。当前内测阶段使用 unpacked extension；产品化分发建议走 Chrome Web Store、Edge Add-ons，或企业策略分发。
 
 ### zip 更新后怎么升级？
 

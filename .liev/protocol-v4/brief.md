@@ -6,7 +6,7 @@ One worker fixes one issue: make `OpenClaw Browser Host` Chrome extension compat
 
 ## Repo
 
-`https://github.com/veil-chow-fyaic/openclaw-browser-host-extension`
+`https://github.com/fyaic/openclaw-browser-host-extension`
 
 ## Context Packet
 
@@ -20,9 +20,9 @@ origin=chrome-extension://cljflebfgmekmnojaiaonfdjcmoonbpf
 code=1002 reason=protocol mismatch
 ```
 
-This means gateway 2026.5.22 expects WebSocket protocol 4, while the Chrome extension currently advertises protocol 3 only.
+This was the original blocker: gateway 2026.5.22 expected WebSocket protocol 4, while the installed Chrome extension advertised protocol 3 only. The canonical repo now contains alpha.11, which advertises protocol 4 and uses `node.presence.alive` for node-role heartbeat.
 
-Known source point:
+Original source point:
 
 - `extension/src/background.js`
 - `NODE_PROTOCOL_VERSION = 3`
@@ -52,7 +52,7 @@ Existing behavior to preserve:
 
 ## Definition Of Done
 
-- PR opened.
+- PR or pushed review branch opened.
 - Static/package validation passes.
-- Browser/gateway validation proves no new protocol mismatch for extension origin over 60 seconds, or records exact blocker.
+- Browser/gateway validation proves no new protocol mismatch or node-role `ping` authorization error for extension origin over 60 seconds, or records exact blocker.
 - Linear issue has proof and is moved to `In Review`.

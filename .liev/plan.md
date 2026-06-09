@@ -84,7 +84,7 @@ node runtime/node/liev-lanes.mjs closure openclaw-browser-host-extension --issue
 
 ## Goal Contract / Hard Metrics
 
-- Intake gate: source document is `docs/ai-handoff-browser-workflow-agent.md`, repo is `veil-chow-fyaic/openclaw-browser-host-extension`, parent is AIC-2586, child is AIC-2587.
+- Intake gate: source document is `docs/ai-handoff-browser-workflow-agent.md`, repo is `fyaic/openclaw-browser-host-extension`, parent is AIC-2586, child is AIC-2587.
 - Planning gate: `.liev/design.md`, `.liev/plan.md`, `.liev/brief.md`, `.liev/validation.md`, `.liev/progress.md`, and `.liev/status.sh` validate with `validate-liev-artifacts.mjs --type browser-extension`.
 - Execution gate: AIC-2587 worker reads `.liev/brief.md`, runs `.liev/status.sh`, updates `.liev/progress.md`, and opens one scoped PR from `liev/aic-2587`.
 - Validation gate: required command block passes or the blocker is recorded and the issue moves to non-active Blocked/Backlog.

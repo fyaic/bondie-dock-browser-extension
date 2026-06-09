@@ -6,7 +6,7 @@ Implement the P0 browser workflow agent MVP in `openclaw-browser-host-extension`
 
 ## Repo
 
-veil-chow-fyaic/openclaw-browser-host-extension
+fyaic/openclaw-browser-host-extension
 
 ## Planning Artifacts
 
@@ -30,7 +30,7 @@ node runtime/node/liev-lanes.mjs closure openclaw-browser-host-extension --issue
 
 ## Definition Of Done
 
-- AIC-2587 opens a GitHub PR against `veil-chow-fyaic/openclaw-browser-host-extension`.
+- AIC-2587 opens a GitHub PR against `fyaic/openclaw-browser-host-extension`.
 - The PR implements Pattern Memory, Context Capture, Recap/Suggestion protocol, privacy controls, and runbook updates within the P0 scope.
 - Required static/package validation passes, or the exact blocker is recorded and the issue is moved to non-active Blocked/Backlog.
 - Browser-extension gate evidence is present: extension load path, service worker, popup/options, storage/alarm/permission behavior, and no default `<all_urls>`.
@@ -57,7 +57,7 @@ node runtime/node/liev-lanes.mjs closure openclaw-browser-host-extension --issue
 
 ## Notes For Future Agent
 
-- Preserve existing PoC behavior: pairing/deviceToken, node-compatible WebSocket, invoke/result, node.event, notifications, current tab info, page summary, downloads summary, confirm UI, keepalive, and paired vs online lifecycle.
+- Preserve existing Browser Host behavior: pairing/deviceToken, protocol 4 node-compatible WebSocket, invoke/result, node.event, notifications, current tab info, page summary, downloads summary, confirm UI, keepalive, and paired vs online lifecycle.
 - Prefer small helpers around Pattern storage, event upload, and invoke dispatch rather than a broad rewrite.
 - Pattern snapshots must record only URL, origin, title, windowId, tabId, active, pinned, timestamp.
 - Context Capture may read selected text or text preview only after explicit user action.

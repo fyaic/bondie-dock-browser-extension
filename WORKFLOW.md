@@ -17,7 +17,7 @@ workspace:
   root: /Users/fuyo-aic/code/liev-symphony-workspaces-openclaw-browser-host-extension
 hooks:
   after_create: |
-    git clone --depth 1 https://github.com/veil-chow-fyaic/openclaw-browser-host-extension.git .
+    git clone --depth 1 https://github.com/fyaic/openclaw-browser-host-extension.git .
     python3 -m json.tool "extension/manifest.json" >/dev/null
     node --check "extension/src/background.js"
     node --check "extension/src/content.js"
@@ -48,7 +48,7 @@ server:
   port: 4104
 ---
 
-You are working on a Linear issue for the Liev/Symphony lane of `veil-chow-fyaic/openclaw-browser-host-extension`.
+You are working on a Linear issue for the Liev/Symphony lane of `fyaic/openclaw-browser-host-extension`.
 
 Issue:
 
@@ -73,7 +73,7 @@ No description provided.
 - Keep changes minimal and scoped to the issue. Follow KISS, YAGNI, DRY, and SOLID.
 - Do not read, print, create, or modify secrets.
 - Do not add dependencies unless the issue explicitly requires them.
-- This lane is pre-authorized for unattended `git commit`, `git push`, and `gh pr create` for scoped changes in `veil-chow-fyaic/openclaw-browser-host-extension`.
+- This lane is pre-authorized for unattended `git commit`, `git push`, and `gh pr create` for scoped changes in `fyaic/openclaw-browser-host-extension`.
 - Use a task branch named `liev/{{ issue.identifier | downcase }}`. Never leave a successful scoped patch as dirty changes on `main`.
 - Use existing `gh` CLI authentication. Do not request plugin installation or interactive re-authentication.
 - Do not merge PRs. Browser extension/UI work requires human review unless a future issue explicitly opts into `agent-automerge` and all visual/browser gates pass.
@@ -110,10 +110,13 @@ No description provided.
 ```bash
 python3 -m json.tool "extension/manifest.json" >/dev/null
 node --check "extension/src/background.js"
+node --check "extension/src/background-entry.js"
 node --check "extension/src/content.js"
 node --check "extension/src/options.js"
 node --check "extension/src/popup.js"
 node --check "extension/src/confirm.js"
+test ! -f "extension/src/history.js" || node --check "extension/src/history.js"
+test ! -f "extension/src/pattern-memory.js" || node --check "extension/src/pattern-memory.js"
 ./scripts/package-extension.sh
 ```
 

@@ -1,14 +1,14 @@
 # OpenClaw Browser Host Extension 架构方案
 
-日期：2026-05-19
+日期：2026-06-09
 
 ## 背景
 
 新的客户侧宿主形态优先考虑浏览器插件，而不是 Windows 本地安装程序。用户在 Edge 或 Chrome 安装插件后，OpenClaw 能触达用户浏览器上下文。
 
-2026-05-15 产品会议后，插件定位从“OpenClaw 浏览器侧宿主”升级为“浏览器智能工作流 Agent 门户”。技术上仍复用 OpenClaw node 连接，但产品主线变为 Pattern Memory、Context Capture 和 OpenClaw Recap 主动建议。
+2026-05-15 产品会议后，插件定位从“OpenClaw 浏览器侧宿主”升级为“浏览器智能工作流 Agent 门户”。技术上仍复用 OpenClaw node 连接；产品上先把“当前页面交给 OpenClaw 处理”做成稳定主链路，再继续打磨 Pattern Memory 的低打扰智能感知。
 
-## 推荐第一阶段形态
+## 当前主线形态
 
 ```text
 Chrome / Edge Extension
@@ -17,17 +17,20 @@ Chrome / Edge Extension
 │   ├── Gateway WebSocket client
 │   ├── capability dispatcher
 │   ├── reconnect / heartbeat
+│   ├── page service dispatcher
 │   ├── pattern snapshot scheduler
 │   ├── local pattern analyzer
 │   └── chrome.storage.local config
 ├── popup
 │   ├── connection status
-│   ├── patterns
-│   ├── context capture
-│   └── quick actions
+│   ├── current page service actions
+│   ├── notification / recent processing feed
+│   ├── recoverable page suggestions
+│   └── second-level settings and diagnostics
 ├── options page
 │   ├── Gateway URL
 │   ├── bootstrap/token config
+│   ├── Media to Notes / workspace config
 │   ├── pattern/privacy switches
 │   └── permission notes
 └── content script
@@ -38,15 +41,26 @@ Chrome / Edge Extension
 
 ## 能力设计
 
-当前 PoC 能力：
+当前 alpha.11 远端可调用能力：
 
 - `browser.notify`
 - `browser.current_tab.info`
 - `browser.current_tab.extract`
 - `browser.downloads.summary`
+- `browser.pattern.open`
+- `browser.knowledge.capture`
 - `user.confirm`
 
-下一阶段产品能力：
+当前 alpha.11 用户侧主入口：
+
+- 当前页面：入库为知识笔记，优先交给 OpenClaw / Media to Notes 规划处理。
+- 当前页面：找库内关联，面向本地知识库和 Obsidian 图谱。
+- 当前页面：发起深研，面向 DSearch / research report。
+- 当前页面：Issue 草案，面向 Linear issue 草拟。
+- 通知集合：展示处理中、完成、失败、TLDR 和产物路径，并可进入历史页。
+- 可恢复页面：展示 Pattern Memory 的本地建议，支持打开/关闭反馈。
+
+下一阶段产品能力重点：
 
 - `browser.pattern.snapshot`
 - `browser.pattern.detected`
@@ -90,17 +104,24 @@ Browser Extension
 │   ├── pairing / deviceToken
 │   ├── invoke / result
 │   └── event upload
+├── Page Intelligence
+│   ├── current tab metadata
+│   ├── selected text / page preview
+│   ├── Media to Notes owned plugin config
+│   ├── knowledge note request
+│   ├── related knowledge request
+│   ├── research request
+│   └── Linear issue draft request
 ├── Pattern Memory
 │   ├── hourly tab/window snapshots
 │   ├── local pattern store
 │   ├── co-occurrence analyzer
 │   ├── manual save current window
 │   └── one-click open pattern
-├── Context Capture
-│   ├── current tab metadata
-│   ├── selected text
-│   ├── page text preview
-│   └── send to Agent
+├── Notification / History UI
+│   ├── pending / done / failed cards
+│   ├── TLDR and output path
+│   └── dismissible recent feed
 ├── Suggestion UI
 │   ├── daily recap suggestions
 │   ├── page-context suggestions
@@ -144,7 +165,7 @@ OpenClaw Node Protocol
 - 页面内容读取优先使用 `activeTab` + 用户点击触发。
 - 避免默认 `host_permissions: <all_urls>`。
 - 需要域名 scope 时再请求具体 host permissions。
-- 当前 PoC 不默认注入全站 content script；用户在 popup 中主动触发页面摘要时，先通过 `chrome.permissions.request` 请求当前站点权限，再通过 `chrome.scripting.executeScript` 注入。
+- 当前版本不默认注入全站 content script；用户在 popup 中主动触发页面读取或页面智能服务时，先通过 `chrome.permissions.request` 请求当前站点权限，再通过 `chrome.scripting.executeScript` 注入。
 - Pattern Memory 首期默认只读取 tab/window 元数据，不读取页面正文。
 - Context Capture 读取页面内容必须由用户主动点击触发。
 - Pattern 数据优先本地存储，上传 OpenClaw 前做摘要化并受用户开关控制。
@@ -165,16 +186,17 @@ OpenClaw 是“大脑”，负责基于 Recap、任务和历史上下文决定�
 
 ## 当前协议状态
 
-`background.js` 已提供真实 OpenClaw node 协议路径：
+`background.js` 已提供 OpenClaw node-compatible protocol 4 路径：
 
 - Gateway challenge：`event/connect.challenge`
 - 设备注册：`req/connect`
 - 注册成功：`res/hello-ok`
+- 心跳：`node.event` / `node.presence.alive`
 - 远端调用：`event/node.invoke.request` 或 `req/node.invoke`
 - 调用回传：`req/node.invoke.result` 或 `res/<node.invoke id>`
 - 主动事件：`req/node.event`
 
-下一步重点是用真实远端 Gateway 联调 `browser-extension` node 的 Origin、token、approve flow 和 allowlist。
+`0.1.0-alpha.11` 已对齐 Gateway 2026.5.22 的 protocol 4 要求，`node-compatible` 握手声明 `minProtocol/maxProtocol = 4`。下一步重点不再是协议版本号，而是把页面智能服务的 OpenClaw 任务状态、知识笔记产物路径、TLDR、历史记录和失败恢复做成稳定闭环。
 
 ## 与 Windows exe 路线的关系
 

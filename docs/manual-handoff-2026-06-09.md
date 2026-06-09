@@ -59,7 +59,7 @@
 远端仓库唯一：
 
 ```text
-https://github.com/veil-chow-fyaic/openclaw-browser-host-extension.git
+https://github.com/fyaic/openclaw-browser-host-extension.git
 ```
 
 当前分支：
@@ -80,7 +80,7 @@ liev/ai-handoff-browser-workflow-agent-20260525
 
 也就是说，只有主工作目录里的 `extension/` 会影响当前 Chrome 实测。
 
-### 当前版本分裂
+### 当前版本状态
 
 主工作目录已回流 protocol 4、鉴权恢复和 node role 心跳修复：
 
@@ -89,23 +89,19 @@ version_name = 0.1.0-alpha.11
 NODE_PROTOCOL_VERSION = 4
 ```
 
-Liev worker 目录保留为修复来源证据，不再作为开发入口：
+以下目录只保留为历史证据，不再作为开发入口：
 
 ```text
 /Users/fuyo-aic/code/liev-symphony-workspaces-openclaw-browser-host-extension/AIC-2735
 version_name = 0.1.0-alpha.8
 NODE_PROTOCOL_VERSION = 4
-```
 
-历史归档目录：
-
-```text
 /Users/fuyo-aic/Projects/_archive/liev-symphony-kit/AIC-2587-openclaw-in-review-workspace-20260526-170000
 version_name = 0.1.0-alpha.7
 NODE_PROTOCOL_VERSION = 3
 ```
 
-结论：protocol 4 修复已移植到 Chrome 当前加载的主目录；alpha.11 还包含 stale deviceToken 自动恢复和 `node.presence.alive` 心跳修复。仍需 reload Chrome extension 并跑 gateway 60 秒验收，确认 Chrome 实际 service worker 版本等于 `0.1.11`。
+结论：主目录 alpha.11 是当前唯一有效实现；旧 worker/归档目录不能继续开发，也不能作为安装来源。
 
 ### 最新连接证据
 
@@ -131,7 +127,7 @@ NODE_PROTOCOL_VERSION = 3
 - 扩展 storage 记录 `connected=true`、`registered=true`、`online=true`，并连续更新 `lastHeartbeatAt`。
 - alpha.11 运行后未再观察到新的 `protocol mismatch` 或 `unauthorized role: node`。
 
-当前仍需人工注意的验收点：
+当前仍需人工注意的安装点：
 
 - 日常 Default profile 曾显示 service worker `0.1.10`，说明用户日常浏览器仍可能需要在 `chrome://extensions` 手动 Reload 一次。
 - alpha.10 会继续用 RPC `ping` 做心跳，Gateway 返回 `unauthorized role: node`；看到这个错误时，优先确认 Chrome 实际加载版本。
@@ -263,7 +259,7 @@ extension/plugins/media-to-notes
 
 目标：让当前 Chrome extension 能重新连上 OpenClaw gateway。
 
-需要把 AIC-2735 worker 里的最小补丁回流到主目录：
+已完成：AIC-2735 worker 里的最小补丁已回流到主目录：
 
 - `extension/src/background.js`: `NODE_PROTOCOL_VERSION = 4`
 - `extension/manifest.json`: bump 到新的 alpha 版本

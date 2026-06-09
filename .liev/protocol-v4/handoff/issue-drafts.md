@@ -1,5 +1,7 @@
 # Issue Draft: Browser Host Protocol 4 Hotfix
 
+> 归档提示：本文件记录 protocol 4 热修任务的原始故障背景。当前仓库已进入 `0.1.0-alpha.11`，有效执行状态以 `.liev/protocol-v4/brief.md`、`.liev/protocol-v4/design.md` 和 `.liev/protocol-v4/plan.md` 为准。
+
 ## Title
 
 Bug: OpenClaw Browser Host protocol 4 compatibility - fix Chrome extension gateway mismatch
@@ -23,7 +25,7 @@ code=1002 reason=protocol mismatch
 Meaning:
 
 - Gateway expects protocol 4.
-- Browser Host extension currently supports/advertises protocol 3 only.
+- The original installed Browser Host extension supported/advertised protocol 3 only; the current alpha.11 code path advertises protocol 4.
 - The extension retries `127.0.0.1:18789` and gets rejected.
 
 Impact:
@@ -43,7 +45,7 @@ Upgrade/fix OpenClaw Browser Host Chrome extension compatibility so it supports 
 
 ## Repo
 
-https://github.com/veil-chow-fyaic/openclaw-browser-host-extension
+https://github.com/fyaic/openclaw-browser-host-extension
 
 ## Scope
 
@@ -110,7 +112,7 @@ from the issue body and keep the plan child-owned.
 
 ## Handoff
 
-- Open a PR against `veil-chow-fyaic/openclaw-browser-host-extension`.
+- Open a PR or review branch against `fyaic/openclaw-browser-host-extension`.
 - Include summary, validation, browser/gateway proof, publishing path, risks, and rollback.
 - Move this issue to `In Review` only after evidence.
 

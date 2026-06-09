@@ -1,5 +1,7 @@
 # Liev Planning Handoff
 
+> 归档提示：本文件是 2026-05-25 的 Liev 规划草稿，保留用于追溯。当前有效仓库、版本和执行口径以 `.liev/brief.md`、`.liev/design.md`、`.liev/plan.md`、`README.md` 和 `docs/manual-handoff-2026-06-09.md` 为准。
+
 ## Status
 
 - Planning status: ready
@@ -16,7 +18,7 @@ Deliver the P0 browser workflow agent MVP for `openclaw-browser-host-extension`:
 
 ### Background
 
-The repo is currently at `0.1.0-alpha.7` and already proves the browser-side host PoC: Manifest V3, OpenClaw Gateway pairing, node invoke/result, node events, notifications, current tab metadata, page summary, downloads summary, confirmation UI, keepalive, and online lifecycle handling. The next product direction from `docs/ai-handoff-browser-workflow-agent.md` is not more notification plumbing; it is a browser intelligent workflow agent portal. The first implementation must stay local-first, avoid broad permissions, and create a useful MVP before any multi-agent or native-host expansion.
+The repo is currently at `0.1.0-alpha.11`: Manifest V3, OpenClaw Gateway pairing, protocol 4 node-compatible transport, node invoke/result, node events, notifications, current tab metadata, page summary, downloads summary, confirmation UI, keepalive, stale-token recovery, page intelligent services, history/notification cards, and Pattern Memory scaffolding are already present. The current product direction from `docs/ai-handoff-browser-workflow-agent.md` is to stabilize the page-to-knowledge-note workflow first, then make Pattern Memory genuinely useful instead of merely manual save/restore.
 
 ### Scope
 
@@ -50,7 +52,7 @@ The repo is currently at `0.1.0-alpha.7` and already proves the browser-side hos
 - Popup and background changes may collide if split across multiple PRs. Mitigation: run this MVP as one scoped child issue with an explicit end-to-end validation gate.
 - Browser validation may be partly manual because extension loading depends on a real browser profile. Mitigation: require documented manual evidence in `docs/browser-test-runbook.md`; do not auto-merge if browser validation is blocked.
 - Privacy regression risk is high because Pattern Memory touches browsing metadata. Mitigation: record only URL, origin, title, windowId, tabId, active, pinned, timestamp; avoid page body and full history upload by default.
-- Transport regression could break existing PoC behaviors. Mitigation: preserve existing invoke/result/event paths and run all documented syntax/package checks.
+- Transport regression could break existing Browser Host behaviors. Mitigation: preserve existing invoke/result/event paths and run all documented syntax/package checks.
 
 ### Issue Graph
 
@@ -107,7 +109,7 @@ Implement the P0 browser workflow agent MVP in `openclaw-browser-host-extension`
 
 ### Repo
 
-veil-chow-fyaic/openclaw-browser-host-extension
+fyaic/openclaw-browser-host-extension
 
 ### Parent
 
@@ -187,7 +189,7 @@ Required evidence:
 
 ### Notes For Future Agent
 
-- Preserve existing PoC behavior: pairing/deviceToken, node-compatible WebSocket, invoke/result, node.event, notifications, current tab info, page summary, downloads summary, confirm UI, keepalive, and paired vs online lifecycle.
+- Preserve existing Browser Host behavior: pairing/deviceToken, protocol 4 node-compatible WebSocket, invoke/result, node.event, notifications, current tab info, page summary, downloads summary, confirm UI, keepalive, and paired vs online lifecycle.
 - Prefer small helpers around Pattern storage, event upload, and invoke dispatch rather than a broad rewrite.
 - Pattern snapshots must record only URL, origin, title, windowId, tabId, active, pinned, timestamp.
 - Context Capture may read selected text or text preview only after explicit user action.
