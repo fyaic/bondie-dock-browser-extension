@@ -21,7 +21,7 @@
 
 ## 当前进展
 
-当前版本：`0.1.0-alpha.11`
+当前版本：`0.1.0-alpha.12`
 
 已完成：
 
@@ -49,6 +49,7 @@
 - Popup 首页已收敛为当前页面主行动、最近处理/历史和二级设置入口。
 - 历史页、通知卡片和处理记录的基础形态已落地。
 - Pattern Memory 已有本地快照/建议/恢复的工程底座，但智能感知质量仍需继续打磨。
+- alpha.12 完成插件前端产品化重设计：popup 改为页面/工作流/记录三段式导航，设置和开发工具降级为二级入口，Options 改为分组设置面板，History/Confirm 与统一视觉系统对齐。
 
 已验证：
 
@@ -62,10 +63,13 @@
 
 产品主线还没有达到可分发产品标准：
 
-- “生成知识笔记”链路需要和本地 OpenClaw workspace 产物、TLDR、失败重试和通知卡片完全闭环。
+- OpenClaw 到浏览器的跨设备通知需要和点击反馈、历史追踪、失败恢复完全闭环。
+- “解析当前页”链路需要和本地 OpenClaw workspace 产物、TLDR、失败重试和通知卡片完全闭环。
+- 视频、文章、GitHub 仓库和普通网页需要形成清晰的页面类型解析体验。
+- 从当前页面发起深度调研仍停留在入口形态，需要接入 OpenClaw 研究任务状态和报告回传。
 - Media to Notes 依赖、env、token、输出目录需要形成安装/设置体验，而不是只放代码。
 - Pattern Memory 需要从“手动保存/恢复”升级为可信自动感知，首页不应暴露抽象内部术语。
-- 日常 Chrome Default profile 可能仍需用户在 `chrome://extensions` 手动 Reload，让 service worker 从旧版本切到 `0.1.11`。
+- 日常 Chrome Default profile 可能仍需用户在 `chrome://extensions` 手动 Reload，让 service worker 从旧版本切到 `0.1.12`。
 - Chrome Web Store / Edge Add-ons、Native Messaging、本地安装器和多 Agent provider 都暂缓。
 
 ## 近期最高优先级
@@ -74,16 +78,40 @@
 
 ### P0.1 页面智能服务闭环
 
-目标：用户在浏览器里点击一次，即可把当前页面交给 OpenClaw 处理为本地知识笔记。
+目标：用户在浏览器里点击一次，即可把当前页面交给 OpenClaw 处理为本地知识笔记；文章、视频、GitHub 仓库和普通网页走同一条可追踪链路。
 
 最小闭环：
 
-1. Popup 主按钮固定为“生成知识笔记”。
+1. Popup 主按钮按页面类型显示“解析当前页 / 解析文章为知识笔记 / 解析视频内容 / 解析 GitHub 仓库”。
 2. 插件采集 URL、title、selectedText、textPreview 和页面类型。
 3. 插件把请求交给 OpenClaw，并指定内置 `media-to-notes` 能力目录、env 和输出目录。
 4. OpenClaw 在本地 workspace 写入 Markdown。
 5. OpenClaw 回传处理中/完成/失败、TLDR 和文件路径。
 6. 插件展示通知卡片，历史页可追溯。
+
+### P0.1a 远程通知闭环
+
+目标：OpenClaw 可跨设备向浏览器插件发送用户侧通知，插件负责展示、追踪、回传用户操作。
+
+最小闭环：
+
+1. OpenClaw 下发通知请求。
+2. 插件展示系统通知和内部记录。
+3. 用户点击、关闭或通知失败时回传事件。
+4. 历史页可追溯通知来源、状态和关联任务。
+5. 离线或重连期间不丢失关键通知状态。
+
+### P0.1b 当前页深度调研
+
+目标：用户正在浏览某个网页时，可以直接从插件发起 OpenClaw 深度调研任务。
+
+最小闭环：
+
+1. 插件采集 URL、title、selectedText、textPreview 和页面类型。
+2. 用户触发“深度调研”。
+3. OpenClaw 创建研究任务并回传处理中状态。
+4. 插件展示完成 TLDR、报告路径或可打开链接。
+5. 失败时提供明确错误和重试入口。
 
 ### P0.2 Pattern Memory 智能感知
 

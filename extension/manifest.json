@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "OpenClaw Browser Host",
   "description": "Browser-side OpenClaw host for notifications, page context, and browser-scoped capabilities.",
-  "version": "0.1.11",
-  "version_name": "0.1.0-alpha.11",
+  "version": "0.1.12",
+  "version_name": "0.1.0-alpha.12",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",

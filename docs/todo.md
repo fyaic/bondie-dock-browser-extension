@@ -2,7 +2,7 @@
 
 日期：2026-05-19
 
-当前版本：0.1.0-alpha.11
+当前版本：0.1.0-alpha.12
 
 产品主线：浏览器智能工作流 Agent 门户。详见 [product-requirements-2026-05-15.md](product-requirements-2026-05-15.md)。
 
@@ -30,10 +30,19 @@
 - Gateway protocol 4 兼容，`node-compatible` 握手声明 `minProtocol/maxProtocol = 4`。
 - `node-compatible` 心跳使用 `node.presence.alive`，不再调用 node role 无权访问的 RPC `ping`。
 - Chrome for Testing 本地烟测、mock Gateway 协议验证、真实 Chrome 插件加载和在线验证。
+- alpha.12 完成 Popup / Options / History / Confirm 前端重设计，弹窗从硬直角改为软圆角壳层，并把页面处理、工作流恢复、近期记录拆成清晰的三段式导航。
+
+## P0：远程通知闭环
+
+- OpenClaw 可跨设备向浏览器插件发送用户侧通知。
+- 通知点击、关闭、失败、过期都回传 OpenClaw。
+- 通知卡片和历史页展示来源、状态、时间和关联任务。
+- 弱网/离线时保存待展示记录，重连后同步状态。
+- 明确系统通知权限、浏览器通知权限和插件内部记录之间的关系。
 
 ## P0：页面智能服务闭环
 
-- 主按钮固定为“生成知识笔记”，避免首页多个相似动作分散重心。
+- 主按钮根据页面类型表达为“解析当前页 / 解析文章为知识笔记 / 解析视频内容 / 解析 GitHub 仓库”，但行为仍收敛到一个主链路。
 - 识别文章、GitHub 仓库、YouTube/Bilibili/Douyin/TikTok 等页面类型。
 - 触发 OpenClaw 调用 `extension/plugins/media-to-notes`。
 - Media to Notes 依赖、env、token、输出目录进入设置页。
@@ -41,6 +50,14 @@
 - 通知卡片展示处理中、完成、失败、TLDR 和 Markdown 路径。
 - 历史页保留所有处理记录，可关闭首页通知但不丢历史。
 - 日常 Chrome Default profile reload 状态要在安装/更新说明中明确。
+
+## P0：深度调研入口
+
+- 从当前页面发起 OpenClaw 深度调研任务。
+- 请求 payload 包含 URL、title、selectedText、textPreview、页面类型和用户选定范围。
+- 插件展示调研任务的处理中、完成、失败状态。
+- 完成后展示报告 TLDR、报告路径或可打开链接。
+- 失败时提供可操作错误和重试入口。
 
 ## P1：Pattern Memory 智能感知
 

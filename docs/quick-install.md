@@ -2,14 +2,14 @@
 
 日期：2026-06-09
 
-适用版本：0.1.0-alpha.11
+适用版本：0.1.0-alpha.12
 
 ## 安装包
 
 内测分发使用 zip 包：
 
 ```text
-openclaw-browser-host-extension-0.1.0-alpha.11.zip
+openclaw-browser-host-extension-0.1.0-alpha.12.zip
 ```
 
 用户拿到 zip 后先解压到一个固定目录，例如：

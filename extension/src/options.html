@@ -6,94 +6,140 @@
     <title>OpenClaw Browser Host 配置</title>
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body>
+  <body class="page-body">
     <main class="options">
-      <h1>OpenClaw Browser Host</h1>
-      <label>
-        Gateway URL
-        <input id="gatewayUrl" placeholder="wss://openclaw.example.ts.net">
-      </label>
-      <label>
-        Token
-        <input id="token" type="password" autocomplete="off">
-      </label>
-      <label>
-        Token mode
-        <select id="authMode">
-          <option value="gateway-token">GatewayToken / manual approve</option>
-          <option value="bootstrap-token">BootstrapToken / auto pairing</option>
-        </select>
-      </label>
-      <label>
-        Node name
-        <input id="nodeName" placeholder="OpenClaw Browser Host">
-      </label>
-      <label>
-        Protocol
-        <select id="protocol">
-          <option value="node-compatible">OpenClaw Node compatible</option>
-          <option value="browser-host">Browser Host Protocol fallback</option>
-        </select>
-      </label>
-      <label class="checkbox">
-        <input id="autoConnect" type="checkbox">
-        自动连接
-      </label>
-      <label class="checkbox">
-        <input id="patternMemoryEnabled" type="checkbox">
-        启用 Pattern Memory
-      </label>
-      <label class="checkbox">
-        <input id="patternUploadEnabled" type="checkbox">
-        允许上传 Pattern 摘要事件
-      </label>
-      <label>
-        固定组合保留数量
-        <input id="patternRetentionLimit" type="number" min="10" max="300" step="1">
-      </label>
-      <label>
-        快照保留数量
-        <input id="patternSnapshotRetentionLimit" type="number" min="10" max="500" step="1">
-      </label>
-      <label>
-        候选共现阈值
-        <input id="patternCandidateMinCooccurrence" type="number" min="2" max="10" step="1">
-      </label>
-      <label class="checkbox">
-        <input id="contextCaptureEnabled" type="checkbox">
-        启用页面智能服务
-      </label>
-      <label>
-        OpenClaw 本地通道
-        <input id="captureSessionKey" placeholder="OpenClaw 本地通道">
-      </label>
-      <h2>内置能力</h2>
-      <label class="checkbox">
-        <input id="mediaToNotesEnabled" type="checkbox">
-        启用 Media to Notes 知识管线
-      </label>
-      <label>
-        Media to Notes 模块目录
-        <input id="mediaToNotesPluginPath" placeholder="/path/to/extension/plugins/media-to-notes">
-      </label>
-      <label>
-        笔记输出目录
-        <input id="mediaToNotesOutputDir" placeholder="~/.openclaw/workspace/browser-notes">
-      </label>
-      <label>
-        环境变量文件
-        <input id="mediaToNotesEnvFile" placeholder="留空则读取模块目录下 .env">
-      </label>
-      <label>
-        默认管线参数
-        <input id="mediaToNotesDefaultFlags" placeholder="--skip-polish">
-      </label>
-      <label class="checkbox">
-        <input id="suggestionsEnabled" type="checkbox">
-        显示 OpenClaw / Pattern Memory 建议
-      </label>
-      <button id="save">保存</button>
-      <button id="clearPatterns" type="button">清空本地 Pattern 数据</button>
+      <header class="options-hero">
+        <div>
+          <h1>OpenClaw Browser Host</h1>
+          <p>配置 Agent 连接、页面解析能力和本地工作流记忆。</p>
+        </div>
+        <button id="save" class="primary" type="button">保存设置</button>
+      </header>
+
+      <section class="settings-grid">
+        <section class="settings-panel">
+          <h2>Agent 连接</h2>
+          <label>
+            Gateway URL
+            <input id="gatewayUrl" placeholder="wss://openclaw.example.ts.net">
+          </label>
+          <label>
+            Token
+            <input id="token" type="password" autocomplete="off">
+          </label>
+          <div class="form-grid">
+            <label>
+              Token mode
+              <select id="authMode">
+                <option value="gateway-token">GatewayToken / manual approve</option>
+                <option value="bootstrap-token">BootstrapToken / auto pairing</option>
+              </select>
+            </label>
+            <label>
+              Protocol
+              <select id="protocol">
+                <option value="node-compatible">OpenClaw Node compatible</option>
+                <option value="browser-host">Browser Host Protocol fallback</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Node name
+            <input id="nodeName" placeholder="OpenClaw Browser Host">
+          </label>
+          <label class="switch-row">
+            <input id="autoConnect" type="checkbox">
+            <span>
+              <strong>自动连接</strong>
+              <small>浏览器启动后自动连接 OpenClaw Gateway。</small>
+            </span>
+          </label>
+        </section>
+
+        <section class="settings-panel">
+          <h2>页面智能</h2>
+          <label class="switch-row">
+            <input id="contextCaptureEnabled" type="checkbox">
+            <span>
+              <strong>启用页面解析入口</strong>
+              <small>用户主动点击时才读取当前页面内容。</small>
+            </span>
+          </label>
+          <label>
+            OpenClaw 本地通道
+            <input id="captureSessionKey" placeholder="OpenClaw 本地通道">
+          </label>
+          <label class="switch-row">
+            <input id="suggestionsEnabled" type="checkbox">
+            <span>
+              <strong>显示恢复建议</strong>
+              <small>展示 OpenClaw 或本地 Pattern 生成的页面建议。</small>
+            </span>
+          </label>
+        </section>
+
+        <section class="settings-panel">
+          <h2>Pattern Memory</h2>
+          <label class="switch-row">
+            <input id="patternMemoryEnabled" type="checkbox">
+            <span>
+              <strong>启用本地工作流记忆</strong>
+              <small>只记录 URL、标题、窗口和时间等元数据。</small>
+            </span>
+          </label>
+          <label class="switch-row">
+            <input id="patternUploadEnabled" type="checkbox">
+            <span>
+              <strong>允许上传摘要事件</strong>
+              <small>上传的是 Pattern 摘要，不上传完整浏览历史。</small>
+            </span>
+          </label>
+          <div class="form-grid three">
+            <label>
+              固定组合
+              <input id="patternRetentionLimit" type="number" min="10" max="300" step="1">
+            </label>
+            <label>
+              快照
+              <input id="patternSnapshotRetentionLimit" type="number" min="10" max="500" step="1">
+            </label>
+            <label>
+              共现阈值
+              <input id="patternCandidateMinCooccurrence" type="number" min="2" max="10" step="1">
+            </label>
+          </div>
+          <button id="clearPatterns" class="danger-button" type="button">清空本地 Pattern 数据</button>
+        </section>
+
+        <section class="settings-panel">
+          <h2>内置解析能力</h2>
+          <label class="switch-row">
+            <input id="mediaToNotesEnabled" type="checkbox">
+            <span>
+              <strong>启用 Media to Notes</strong>
+              <small>视频、文章、GitHub 仓库优先走该本地能力模块。</small>
+            </span>
+          </label>
+          <label>
+            模块目录
+            <input id="mediaToNotesPluginPath" placeholder="/path/to/extension/plugins/media-to-notes">
+          </label>
+          <label>
+            笔记输出目录
+            <input id="mediaToNotesOutputDir" placeholder="~/.openclaw/workspace/browser-notes">
+          </label>
+          <div class="form-grid">
+            <label>
+              环境变量文件
+              <input id="mediaToNotesEnvFile" placeholder="留空则读取模块目录下 .env">
+            </label>
+            <label>
+              默认管线参数
+              <input id="mediaToNotesDefaultFlags" placeholder="--skip-polish">
+            </label>
+          </div>
+        </section>
+      </section>
       <p id="message"></p>
     </main>
     <script src="options.js"></script>

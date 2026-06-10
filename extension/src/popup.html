@@ -6,7 +6,7 @@
     <title>OpenClaw Browser Host</title>
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body>
+  <body class="popup-body">
     <main class="popup">
       <header class="popup-header">
         <div class="brand">
@@ -23,63 +23,90 @@
         </div>
       </header>
 
-      <section id="homeView">
-        <section class="page-service-panel focus-panel">
-          <div class="service-header focus-header">
-            <div class="capture-copy">
-              <strong>当前页面</strong>
-              <span id="pageHint">读取当前网页</span>
+      <section id="mainView">
+        <nav class="popup-nav" aria-label="插件主导航">
+          <button type="button" data-popup-view="page" aria-pressed="true">页面</button>
+          <button type="button" data-popup-view="workflow" aria-pressed="false">工作流</button>
+          <button type="button" data-popup-view="activity" aria-pressed="false">记录</button>
+        </nav>
+
+        <section id="pageView" class="view-pane">
+          <section class="task-panel focus-panel">
+            <div class="service-header focus-header">
+              <div class="capture-copy">
+                <strong>当前页面</strong>
+                <span id="pageHint">读取当前网页</span>
+              </div>
+              <span id="pageKind" class="page-kind">网页</span>
             </div>
-            <span id="pageKind" class="page-kind">网页</span>
-          </div>
-          <button id="captureContext" class="primary-action" type="button">入库为知识笔记</button>
-          <div class="service-actions">
-            <button type="button" data-page-service="relate">
-              <strong>找库内关联</strong>
-              <small>Obsidian 图谱</small>
-            </button>
-            <button type="button" data-page-service="research">
-              <strong>发起深研</strong>
-              <small>DSearch 报告</small>
-            </button>
-            <button type="button" data-page-service="issue">
-              <strong>Issue 草案</strong>
-              <small>Linear 看板</small>
-            </button>
-          </div>
+            <button id="captureContext" class="primary-action" type="button">解析当前页</button>
+            <div class="service-actions" aria-label="页面处理动作">
+              <button type="button" data-page-service="research">
+                <strong>深度调研</strong>
+                <small>从此页展开</small>
+              </button>
+              <button type="button" data-page-service="relate">
+                <strong>知识关联</strong>
+                <small>查本地库</small>
+              </button>
+              <button type="button" data-page-service="issue">
+                <strong>Issue 草案</strong>
+                <small>转工作项</small>
+              </button>
+            </div>
+          </section>
         </section>
 
-        <section class="section">
-          <div class="section-heading">
-            <h2>通知</h2>
-            <div class="heading-actions">
-              <span id="handoffState" class="subtle">待命</span>
-              <button id="openHistory" class="text-button" type="button">历史</button>
-            </div>
-          </div>
-          <div id="handoffList" class="stack"></div>
-        </section>
-
-        <section class="section workflow-cue">
-          <div class="section-heading">
-            <h2>可恢复页面</h2>
-            <div class="heading-actions">
+        <section id="workflowView" class="view-pane" hidden>
+          <section class="section">
+            <div class="section-heading">
+              <div>
+                <h2>可恢复页面</h2>
+                <p>基于你常一起打开的页面组合</p>
+              </div>
               <button id="scanPatterns" class="icon-button" type="button" title="刷新页面关联" aria-label="刷新页面关联">↻</button>
-              <button id="manageWorkflows" class="text-button" type="button">管理</button>
             </div>
-          </div>
-          <div id="suggestionList" class="stack"></div>
+            <div id="suggestionList" class="stack"></div>
+          </section>
+
+          <section class="section">
+            <div class="section-heading">
+              <div>
+                <h2>保存的组合</h2>
+                <p>手动固定当前窗口，稍后可一键恢复</p>
+              </div>
+              <button id="savePattern" class="text-button" type="button">固定当前窗口</button>
+            </div>
+            <div id="patternList" class="stack"></div>
+            <div id="candidateList" class="stack secondary-stack"></div>
+          </section>
+        </section>
+
+        <section id="activityView" class="view-pane" hidden>
+          <section class="section activity-panel">
+            <div class="section-heading">
+              <div>
+                <h2>近期处理</h2>
+                <p>通知、解析、调研都会回到这里</p>
+              </div>
+              <div class="heading-actions">
+                <span id="handoffState" class="subtle">待命</span>
+                <button id="openHistory" class="text-button" type="button">全部历史</button>
+              </div>
+            </div>
+            <div id="handoffList" class="stack"></div>
+          </section>
         </section>
       </section>
 
-      <section id="settingsView" hidden>
+      <section id="settingsView" class="view-pane" hidden>
         <div class="settings-header">
           <button id="closeSettings" class="icon-button" type="button" title="返回" aria-label="返回">‹</button>
           <h2>设置</h2>
           <a class="icon-button settings-icon-link" href="options.html" target="_blank" title="完整设置" aria-label="完整设置">↗</a>
         </div>
 
-        <section class="section">
+        <section class="section settings-summary">
           <div class="settings-row">
             <span>连接通道</span>
             <strong id="routeLabel">OpenClaw 本地通道</strong>
@@ -90,21 +117,11 @@
           </div>
           <div class="actions">
             <button id="disconnect" type="button">断开连接</button>
-            <button id="savePattern" type="button">固定当前窗口组合</button>
           </div>
         </section>
 
-        <section class="section">
-          <div class="section-heading">
-            <h2>保存的工作流</h2>
-          </div>
-          <div id="patternList" class="stack"></div>
-        </section>
-
-        <section class="section">
-          <div class="section-heading">
-            <h2>开发工具</h2>
-          </div>
+        <details class="section dev-tools">
+          <summary>开发工具</summary>
           <section class="actions">
             <button id="notify" type="button">测试通知</button>
             <button id="tab" type="button">当前 Tab</button>
@@ -113,8 +130,9 @@
             <button id="confirm" type="button">确认弹窗</button>
           </section>
           <pre id="output"></pre>
-        </section>
+        </details>
       </section>
+
     </main>
     <script src="popup.js"></script>
   </body>

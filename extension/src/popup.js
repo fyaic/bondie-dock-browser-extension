@@ -6,10 +6,18 @@ const pageKind = document.getElementById('pageKind');
 const handoffState = document.getElementById('handoffState');
 const handoffList = document.getElementById('handoffList');
 const patternList = document.getElementById('patternList');
+const candidateList = document.getElementById('candidateList');
 const suggestionList = document.getElementById('suggestionList');
 const mediaPluginLabel = document.getElementById('mediaPluginLabel');
-const homeView = document.getElementById('homeView');
+const captureContextButton = document.getElementById('captureContext');
+const mainView = document.getElementById('mainView');
 const settingsView = document.getElementById('settingsView');
+const popupViews = {
+  page: document.getElementById('pageView'),
+  workflow: document.getElementById('workflowView'),
+  activity: document.getElementById('activityView')
+};
+const viewButtons = [...document.querySelectorAll('[data-popup-view]')];
 const DISMISSED_NOTIFICATIONS_KEY = 'browserDismissedHandoffNotifications';
 const MAX_DISMISSED_NOTIFICATIONS = 120;
 let pageHintHoldUntil = 0;
@@ -39,10 +47,10 @@ bind('confirm', {
 bind('savePattern', { type: 'saveCurrentPattern' });
 bind('scanPatterns', { type: 'scanPatterns' });
 bindPageServices();
+bindPopupViews();
 document.addEventListener('click', handleWorkflowClick);
 document.getElementById('openSettings').addEventListener('click', () => showSettings(true));
 document.getElementById('closeSettings').addEventListener('click', () => showSettings(false));
-document.getElementById('manageWorkflows').addEventListener('click', () => showSettings(true));
 document.getElementById('openHistory').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('src/history.html') });
 });
@@ -69,7 +77,7 @@ function bindPageSummary() {
 }
 
 function bindPageServices() {
-  document.getElementById('captureContext').addEventListener('click', async () => {
+  captureContextButton.addEventListener('click', async () => {
     await sendPageService('knowledge');
   });
 
@@ -77,6 +85,22 @@ function bindPageServices() {
     button.addEventListener('click', async () => {
       await sendPageService(button.dataset.pageService);
     });
+  }
+}
+
+function bindPopupViews() {
+  for (const button of viewButtons) {
+    button.addEventListener('click', () => showPopupView(button.dataset.popupView));
+  }
+}
+
+function showPopupView(name) {
+  const nextView = popupViews[name] ? name : 'page';
+  for (const [viewName, view] of Object.entries(popupViews)) {
+    view.hidden = viewName !== nextView;
+  }
+  for (const button of viewButtons) {
+    button.setAttribute('aria-pressed', button.dataset.popupView === nextView ? 'true' : 'false');
   }
 }
 
@@ -93,15 +117,21 @@ async function refreshPageMeta() {
     if (!response?.ok) {
       pageKind.textContent = '网页';
       pageHint.textContent = '等待当前网页';
+      captureContextButton.textContent = '解析当前页';
+      captureContextButton.disabled = true;
       return;
     }
     const payload = response.payload || {};
     pageKind.textContent = payload.contentLabel || pageKindText(payload.contentType);
+    captureContextButton.textContent = primaryActionText(payload.contentType);
+    captureContextButton.disabled = !payload.knowledgeSupported;
     if (Date.now() >= pageHintHoldUntil) {
       pageHint.textContent = compactText(payload.title || payload.url || '当前网页', 42);
     }
   } catch {
     pageKind.textContent = '网页';
+    captureContextButton.textContent = '解析当前页';
+    captureContextButton.disabled = true;
     if (Date.now() >= pageHintHoldUntil) {
       pageHint.textContent = '等待当前网页';
     }
@@ -116,6 +146,16 @@ function pageKindText(contentType) {
     'github-repository': 'GitHub 仓库'
   };
   return labels[contentType] || '网页';
+}
+
+function primaryActionText(contentType) {
+  const labels = {
+    article: '解析文章为知识笔记',
+    webpage: '解析当前页',
+    video: '解析视频内容',
+    'github-repository': '解析 GitHub 仓库'
+  };
+  return labels[contentType] || '解析当前页';
 }
 
 function pageServiceText(service) {
@@ -291,7 +331,7 @@ async function refreshStatus() {
 }
 
 function showSettings(visible) {
-  homeView.hidden = visible;
+  mainView.hidden = visible;
   settingsView.hidden = !visible;
 }
 
@@ -364,6 +404,7 @@ function renderHandoffs(handoffs, dismissed) {
 function handoffCard(handoff, isCurrent) {
   const row = document.createElement('article');
   row.className = isCurrent ? 'handoff-item handoff-current' : 'handoff-item handoff-compact';
+  row.dataset.state = handoff.state || 'idle';
   const meta = [
     stateText(handoff.state),
     pageServiceText(handoff.service || handoff.intent),
@@ -424,23 +465,32 @@ function extractReadableSummary(text) {
 
 function renderPatterns(payload) {
   renderPatternGroup(patternList, payload.patterns || [], {
-    emptyText: '暂无保存项',
+    emptyText: '还没有固定组合',
     itemKind: 'saved',
     buttonAction: 'open-pattern',
     buttonText: '打开'
+  });
+  renderPatternGroup(candidateList, payload.candidates || [], {
+    emptyText: '',
+    itemKind: 'candidate',
+    buttonAction: 'save-candidate',
+    buttonText: '固定',
+    limit: 2
   });
 }
 
 function renderPatternGroup(container, patterns, options) {
   replaceChildren(container);
   if (!patterns.length) {
-    container.appendChild(emptyState(options.emptyText));
+    if (options.emptyText) {
+      container.appendChild(emptyState(options.emptyText));
+    }
     return;
   }
 
-  for (const pattern of patterns.slice(0, 4)) {
+  for (const pattern of patterns.slice(0, options.limit || 4)) {
     const row = document.createElement('article');
-    row.className = 'workflow-item';
+    row.className = `workflow-item ${options.itemKind === 'candidate' ? 'candidate-item' : ''}`.trim();
     row.appendChild(itemText(pattern.name, describePattern(pattern)));
     if (options.buttonAction && options.buttonText) {
       row.appendChild(actionButton(options.buttonText, options.buttonAction, pattern.id));

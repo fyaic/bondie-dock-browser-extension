@@ -6,7 +6,7 @@ OpenClaw Browser Host Extension 是新的浏览器插件主线，用于替代或
 
 2026-05-15 产品会议后，浏览器插件路线升级为“浏览器智能工作流 Agent 门户”。后续主线不再只是远程宿主，而是围绕 Pattern Memory、Context Capture 和 OpenClaw Recap 主动建议构建产品体验。会议需求整理见 [浏览器智能工作流 Agent 产品化需求整理](docs/product-requirements-2026-05-15.md)。
 
-当前版本：`0.1.0-alpha.11`。
+当前版本：`0.1.0-alpha.12`。
 
 最新主仓库：
 
@@ -14,10 +14,10 @@ OpenClaw Browser Host Extension 是新的浏览器插件主线，用于替代或
 https://github.com/fyaic/openclaw-browser-host-extension.git
 ```
 
-当前交接分支：
+当前主线分支：
 
 ```text
-liev/ai-handoff-browser-workflow-agent-20260525
+main
 ```
 
 ## 当前结论
@@ -38,11 +38,13 @@ liev/ai-handoff-browser-workflow-agent-20260525
 │   └── windows-exe-route.md
 ├── docs
 │   ├── architecture.md
+│   ├── browser-extension-productization-roadmap-2026-06-09.md
 │   ├── browser-test-runbook.md
 │   ├── gateway-protocol-notes.md
 │   ├── implementation-plan.md
 │   ├── product-requirements-2026-05-15.md
 │   ├── quick-install.md
+│   ├── release-notes-0.1.0-alpha.12.md
 │   ├── todo.md
 │   ├── research
 │   │   └── 2026-05-13-browser-extension-host.md
@@ -105,7 +107,7 @@ Edge:
 
 ## 当前能力
 
-当前 alpha.11 包含：
+当前 alpha.12 包含：
 
 - Manifest V3。
 - 配置页：Gateway URL / token / token mode / node name、知识能力配置、输出目录和高级诊断。
@@ -122,13 +124,16 @@ Edge:
 - 插件内置能力模块目录：`extension/plugins/media-to-notes`。
 - 历史页和通知卡片：用于展示处理中的任务、完成结果、TLDR 和文件路径。
 - Pattern Memory 初版：已有本地快照/建议/恢复的工程底座，但产品上仍应视为“待打磨的智能感知能力”。
+- Popup / Options / History / Confirm 前端重设计：popup 改为软圆角壳层、页面/工作流/记录三段式导航，设置和开发工具降级为二级入口，Options 设置页改为分组面板，历史页状态边界和视觉层级已统一。
+- 本次版本说明见 [0.1.0-alpha.12 release notes](docs/release-notes-0.1.0-alpha.12.md)，后续产品化任务树见 [Browser Extension Productization Roadmap](docs/browser-extension-productization-roadmap-2026-06-09.md)。
 
 下一阶段产品化重点：
 
-- P0：把“生成知识笔记”做成稳定主链路，明确处理中/完成/失败反馈，产物写入 OpenClaw workspace。
-- P0：把 Media to Notes 作为插件拥有的内置能力模块维护，依赖、env、输出目录都由插件/本地 OpenClaw 侧配置承接。
-- P1：让 Pattern Memory 从“可保存/可恢复”升级为真正可信的自动感知和低打扰建议。
-- P1：完善历史页、通知卡片、设置页和诊断页，形成可人工分发的 unpacked/zip 内测形态。
+- P0：打通 OpenClaw 到浏览器的远程通知闭环，支持跨设备通知、点击反馈、历史追踪和失败恢复。
+- P0：把“解析当前页”做成稳定主链路，按文章、视频、GitHub 仓库和普通网页提供知识笔记、TLDR、产物路径、失败重试和历史追溯。
+- P0：接入当前页面深度调研入口，允许用户从正在浏览的页面发起研究任务，并把报告状态回传到插件。
+- P0：让 Pattern Memory 从“可保存/可恢复”升级为可信自动感知和低打扰建议。
+- P1：把 Edge 作为 Chromium 近线适配目标，把 Safari 作为后续单独评估目标。
 - P2：再考虑 Chrome Web Store / Edge Add-ons、Native Messaging、本地安装器和多 Agent adapter。
 
 ## 归档说明

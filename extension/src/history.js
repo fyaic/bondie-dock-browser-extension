@@ -48,6 +48,7 @@ function renderHistory() {
 function historyItem(handoff) {
   const item = document.createElement('article');
   item.className = 'history-item';
+  item.dataset.state = handoff.state || 'idle';
 
   const main = document.createElement('div');
   main.className = 'history-main';
