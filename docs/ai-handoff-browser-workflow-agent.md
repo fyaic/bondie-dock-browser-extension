@@ -88,6 +88,7 @@
 4. OpenClaw 在本地 workspace 写入 Markdown。
 5. OpenClaw 回传处理中/完成/失败、TLDR 和文件路径。
 6. 插件展示通知卡片，历史页可追溯。
+7. 如果 OpenClaw 没有在配置的超时窗口内回传结果，插件必须把记录转为失败，并允许用户从 popup 或历史页重试。
 
 ### P0.1a 远程通知闭环
 

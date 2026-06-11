@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
   autoConnect: false,
   contextCaptureEnabled: true,
   captureSessionKey: 'browser-inbox',
+  handoffTimeoutMinutes: 10,
   mediaToNotesEnabled: true,
   mediaToNotesPluginPath: '',
   mediaToNotesOutputDir: '~/.openclaw/workspace/browser-notes',
@@ -51,6 +52,10 @@ const CAPABILITIES = [
 ];
 const SUGGESTIONS_STORAGE_KEY = 'browserSuggestions';
 const HANDOFFS_STORAGE_KEY = 'browserHandoffs';
+const HANDOFF_TIMEOUT_ALARM_NAME = 'openclaw-handoff-timeout';
+const HANDOFF_TIMEOUT_CHECK_MINUTES = 1;
+const MIN_HANDOFF_TIMEOUT_MINUTES = 1;
+const MAX_HANDOFF_TIMEOUT_MINUTES = 120;
 const MAX_SUGGESTIONS = 20;
 const MAX_HANDOFFS = 20;
 const MAX_HANDOFF_REPLY_CHARS = 8000;
@@ -99,6 +104,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
   if (alarm.name === SNAPSHOT_ALARM_NAME) {
     handlePatternSnapshotAlarm().catch((error) => setStatus({ lastError: error.message }));
+    return;
+  }
+
+  if (alarm.name === HANDOFF_TIMEOUT_ALARM_NAME) {
+    reconcileHandoffTimeouts().catch((error) => setStatus({ lastError: error.message }));
   }
 });
 
@@ -136,6 +146,8 @@ async function initializeServiceWorker() {
   await ensureHostIdentity();
   await patternMemory.ensureDefaults();
   await patternMemory.ensureSnapshotAlarm();
+  await reconcileHandoffTimeouts();
+  await scheduleHandoffTimeoutAlarm();
   schedulePatternObservation('service-worker-ready', { immediate: true });
   await maybeAutoConnect();
 }
@@ -215,6 +227,8 @@ async function handleRuntimeMessage(message) {
       return listSuggestions();
     case 'suggestionFeedback':
       return handleSuggestionFeedback(message.payload ?? {});
+    case 'retryHandoff':
+      return retryHandoff(message.payload ?? {});
     case 'handoffs':
       return listHandoffs();
     default:
@@ -1473,10 +1487,14 @@ async function captureCurrentContext(args = {}) {
   await subscribeToCaptureSession(config);
   const agentRequestSent = await emitOpenClawAgentRequest(payload);
   const state = agentRequestSent ? 'processing' : 'captured-local';
+  const requestedAt = new Date().toISOString();
   await patchHandoff(payload.captureId, {
     state,
     contextEventSent,
     agentRequestSent,
+    attemptCount: agentRequestSent ? 1 : 0,
+    lastRequestAt: agentRequestSent ? requestedAt : '',
+    deadlineAt: agentRequestSent ? handoffDeadlineAt(config, requestedAt) : '',
     updatedAt: new Date().toISOString()
   });
 
@@ -1643,6 +1661,7 @@ async function emitOpenClawEvent(eventName, payload) {
 }
 
 async function listHandoffs() {
+  await reconcileHandoffTimeouts();
   const stored = await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]);
   return {
     ok: true,
@@ -1668,6 +1687,11 @@ function createHandoffRecord(capture) {
     state: 'queued',
     contextEventSent: false,
     agentRequestSent: false,
+    attemptCount: 0,
+    lastRequestAt: '',
+    lastRetriedAt: '',
+    deadlineAt: '',
+    timedOutAt: '',
     latestReply: '',
     error: '',
     notifiedAt: '',
@@ -1683,6 +1707,7 @@ async function saveHandoff(record) {
     ...(stored[HANDOFFS_STORAGE_KEY] || []).filter((item) => item.id !== record.id)
   ].slice(0, MAX_HANDOFFS);
   await chrome.storage.local.set({ [HANDOFFS_STORAGE_KEY]: next });
+  await scheduleHandoffTimeoutAlarm(next);
 }
 
 async function patchHandoff(id, patch) {
@@ -1694,7 +1719,7 @@ async function patchHandoff(id, patch) {
       if (item.id !== id) {
         return item;
       }
-      const next = { ...item, ...patch };
+      const next = normalizeHandoffAfterPatch({ ...item, ...patch });
       if (shouldNotifyHandoffComplete(next, item)) {
         next.notifiedAt = new Date().toISOString();
         completed = next;
@@ -1705,6 +1730,7 @@ async function patchHandoff(id, patch) {
   if (completed) {
     await notifyHandoffComplete(completed);
   }
+  await scheduleHandoffTimeoutAlarm();
 }
 
 async function updateLatestHandoffForSession(sessionKey, patch) {
@@ -1722,6 +1748,7 @@ async function updateLatestHandoffForSession(sessionKey, patch) {
     ...previous,
     ...patch
   };
+  next[index] = normalizeHandoffAfterPatch(next[index]);
   if (shouldNotifyHandoffComplete(next[index], previous)) {
     next[index].notifiedAt = new Date().toISOString();
   }
@@ -1729,6 +1756,167 @@ async function updateLatestHandoffForSession(sessionKey, patch) {
   if (next[index].notifiedAt && next[index].notifiedAt !== previous.notifiedAt) {
     await notifyHandoffComplete(next[index]);
   }
+  await scheduleHandoffTimeoutAlarm(next);
+}
+
+async function retryHandoff(args = {}) {
+  const handoffId = args.id || args.handoffId || '';
+  if (!handoffId) {
+    return { ok: false, error: 'Missing handoff id' };
+  }
+
+  const stored = await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]);
+  const handoff = (stored[HANDOFFS_STORAGE_KEY] || []).find((item) => item.id === handoffId);
+  if (!handoff) {
+    return { ok: false, error: 'Handoff not found' };
+  }
+  if (handoff.state === 'processing' || handoff.state === 'queued') {
+    return { ok: false, error: 'Handoff is already processing' };
+  }
+  if (handoff.state === 'done') {
+    return { ok: false, error: 'Handoff is already complete' };
+  }
+
+  const config = await chrome.storage.local.get(Object.keys(DEFAULT_CONFIG));
+  const capture = captureFromHandoff(handoff, config);
+  await subscribeToCaptureSession(config);
+  const agentRequestSent = await emitOpenClawAgentRequest(capture);
+  const requestedAt = new Date().toISOString();
+  const patch = agentRequestSent ? {
+    state: 'processing',
+    error: '',
+    latestReply: '',
+    agentRequestSent: true,
+    attemptCount: Number(handoff.attemptCount || 0) + 1,
+    lastRequestAt: requestedAt,
+    lastRetriedAt: requestedAt,
+    deadlineAt: handoffDeadlineAt(config, requestedAt),
+    timedOutAt: '',
+    updatedAt: requestedAt
+  } : {
+    state: 'error',
+    error: 'OpenClaw is not connected',
+    lastRetriedAt: requestedAt,
+    updatedAt: requestedAt
+  };
+
+  await patchHandoff(handoffId, patch);
+  return {
+    ok: agentRequestSent,
+    error: agentRequestSent ? undefined : 'OpenClaw is not connected',
+    payload: {
+      handoffId,
+      state: agentRequestSent ? 'processing' : 'error',
+      retriedAt: requestedAt
+    }
+  };
+}
+
+function captureFromHandoff(handoff, config) {
+  const sessionKey = normalizeCaptureSessionKey(handoff.sessionKey || config.captureSessionKey);
+  return {
+    captureId: handoff.id,
+    url: handoff.url,
+    title: handoff.title,
+    selectedText: '',
+    textPreview: '',
+    intent: normalizeCaptureIntent(handoff.intent || handoff.service),
+    service: normalizePageService(handoff.service || handoff.intent),
+    contentType: handoff.contentType || 'webpage',
+    contentLabel: handoff.contentLabel || '网页',
+    platform: handoff.platform || 'web',
+    ability: handoff.ability || buildPageAbility(config, handoff.service || handoff.intent, {
+      contentType: handoff.contentType || 'webpage',
+      label: handoff.contentLabel || '网页',
+      platform: handoff.platform || 'web',
+      knowledgeSupported: true
+    }),
+    route: {
+      sessionKey,
+      canonicalSessionKey: handoff.canonicalSessionKey || canonicalizeOpenClawSessionKey(sessionKey),
+      display: 'OpenClaw 本地通道'
+    },
+    capturedAt: handoff.capturedAt || new Date().toISOString(),
+    retryOf: handoff.id
+  };
+}
+
+function normalizeHandoffAfterPatch(handoff) {
+  if (handoff.state === 'done' || handoff.state === 'error' || handoff.state === 'captured-local') {
+    return {
+      ...handoff,
+      deadlineAt: handoff.state === 'captured-local' ? handoff.deadlineAt || '' : ''
+    };
+  }
+  return handoff;
+}
+
+async function reconcileHandoffTimeouts() {
+  const [stored, config] = await Promise.all([
+    chrome.storage.local.get([HANDOFFS_STORAGE_KEY]),
+    chrome.storage.local.get(Object.keys(DEFAULT_CONFIG))
+  ]);
+  const now = Date.now();
+  let changed = false;
+  const timeoutMinutes = normalizeHandoffTimeoutMinutes(config.handoffTimeoutMinutes);
+  const handoffs = (stored[HANDOFFS_STORAGE_KEY] || []).map((handoff) => {
+    if (!isPendingHandoff(handoff)) {
+      return handoff;
+    }
+
+    const deadlineMs = Date.parse(handoff.deadlineAt || '');
+    if (!Number.isFinite(deadlineMs) || deadlineMs > now) {
+      return handoff;
+    }
+
+    changed = true;
+    const timedOutAt = new Date(now).toISOString();
+    return {
+      ...handoff,
+      state: 'error',
+      error: `OpenClaw processing timed out after ${timeoutMinutes} minutes. You can retry from the record.`,
+      deadlineAt: '',
+      timedOutAt,
+      updatedAt: timedOutAt
+    };
+  });
+
+  if (changed) {
+    await chrome.storage.local.set({ [HANDOFFS_STORAGE_KEY]: handoffs });
+  }
+  await scheduleHandoffTimeoutAlarm(handoffs);
+  return changed;
+}
+
+async function scheduleHandoffTimeoutAlarm(handoffs) {
+  const items = handoffs || (await chrome.storage.local.get([HANDOFFS_STORAGE_KEY]))[HANDOFFS_STORAGE_KEY] || [];
+  if (!items.some(isPendingHandoff)) {
+    await chrome.alarms.clear(HANDOFF_TIMEOUT_ALARM_NAME);
+    return;
+  }
+  await chrome.alarms.create(HANDOFF_TIMEOUT_ALARM_NAME, {
+    delayInMinutes: HANDOFF_TIMEOUT_CHECK_MINUTES,
+    periodInMinutes: HANDOFF_TIMEOUT_CHECK_MINUTES
+  });
+}
+
+function isPendingHandoff(handoff) {
+  return (handoff.state === 'queued' || handoff.state === 'processing') && Boolean(handoff.deadlineAt);
+}
+
+function handoffDeadlineAt(config, startAt = new Date().toISOString()) {
+  const timeoutMinutes = normalizeHandoffTimeoutMinutes(config.handoffTimeoutMinutes);
+  const startMs = Date.parse(startAt);
+  const baseMs = Number.isFinite(startMs) ? startMs : Date.now();
+  return new Date(baseMs + timeoutMinutes * 60 * 1000).toISOString();
+}
+
+function normalizeHandoffTimeoutMinutes(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return DEFAULT_CONFIG.handoffTimeoutMinutes;
+  }
+  return Math.max(MIN_HANDOFF_TIMEOUT_MINUTES, Math.min(MAX_HANDOFF_TIMEOUT_MINUTES, Math.trunc(number)));
 }
 
 function shouldNotifyHandoffComplete(next, previous) {

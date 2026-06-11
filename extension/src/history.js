@@ -5,11 +5,22 @@ let currentFilter = 'all';
 let cachedHandoffs = [];
 
 document.getElementById('refreshHistory').addEventListener('click', loadHistory);
+historyList.addEventListener('click', handleHistoryAction);
 for (const button of filterButtons) {
   button.addEventListener('click', () => {
     currentFilter = button.dataset.historyFilter;
     renderHistory();
   });
+}
+
+async function handleHistoryAction(event) {
+  const button = event.target.closest('button[data-action="retry-handoff"]');
+  if (!button) {
+    return;
+  }
+  button.disabled = true;
+  await chrome.runtime.sendMessage({ type: 'retryHandoff', payload: { handoffId: button.dataset.id } });
+  await loadHistory();
 }
 
 loadHistory();
@@ -94,10 +105,23 @@ function historyItem(handoff) {
     open.textContent = '打开来源';
     actions.appendChild(open);
   }
+  if (canRetryHandoff(handoff)) {
+    const retry = document.createElement('button');
+    retry.className = 'button-link';
+    retry.type = 'button';
+    retry.dataset.action = 'retry-handoff';
+    retry.dataset.id = handoff.id;
+    retry.textContent = '重试';
+    actions.appendChild(retry);
+  }
 
   item.appendChild(main);
   item.appendChild(actions);
   return item;
+}
+
+function canRetryHandoff(handoff) {
+  return handoff?.state === 'error' || handoff?.state === 'captured-local';
 }
 
 function updateFilterState() {

@@ -49,6 +49,7 @@
 - 产物默认写入 OpenClaw workspace 下的 browser notes 目录。
 - 通知卡片展示处理中、完成、失败、TLDR 和 Markdown 路径。
 - 历史页保留所有处理记录，可关闭首页通知但不丢历史。
+- 处理中的页面任务必须有超时回收、失败原因和重试入口。
 - 日常 Chrome Default profile reload 状态要在安装/更新说明中明确。
 
 ## P0：深度调研入口

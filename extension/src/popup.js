@@ -380,6 +380,12 @@ async function handleWorkflowClick(event) {
   if (action === 'dismiss-notification') {
     await dismissNotification(id);
     await refreshWorkflow();
+    return;
+  }
+
+  if (action === 'retry-handoff') {
+    await sendAndRender({ type: 'retryHandoff', payload: { handoffId: id } });
+    await refreshWorkflow();
   }
 }
 
@@ -425,6 +431,12 @@ function handoffCard(handoff, isCurrent) {
     path.textContent = notePath;
     row.appendChild(path);
   }
+  if (isCurrent && canRetryHandoff(handoff)) {
+    const actions = document.createElement('div');
+    actions.className = 'inline-actions';
+    actions.appendChild(actionButton('重试', 'retry-handoff', handoff.id));
+    row.appendChild(actions);
+  }
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'icon-button close-card';
@@ -435,6 +447,10 @@ function handoffCard(handoff, isCurrent) {
   close.textContent = '×';
   row.appendChild(close);
   return row;
+}
+
+function canRetryHandoff(handoff) {
+  return handoff?.state === 'error' || handoff?.state === 'captured-local';
 }
 
 function popupReplyText(text) {

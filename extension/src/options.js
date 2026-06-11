@@ -12,6 +12,7 @@ const fields = [
   'patternCandidateMinCooccurrence',
   'contextCaptureEnabled',
   'captureSessionKey',
+  'handoffTimeoutMinutes',
   'mediaToNotesEnabled',
   'mediaToNotesPluginPath',
   'mediaToNotesOutputDir',
