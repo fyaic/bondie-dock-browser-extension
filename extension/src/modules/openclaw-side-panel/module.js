@@ -1,3 +1,5 @@
+import { OpenClawSessionAdapter } from './session-adapter.js';
+
 const MODULE_ID = 'openclaw-side-panel';
 const MODULE_NAME = 'OpenClaw Side Panel';
 const SIDE_PANEL_PATH = 'src/sidepanel/sidepanel.html';
@@ -30,6 +32,7 @@ export const openClawSidePanelModule = {
   messages: {
     'sidePanel.status': handleStatus,
     'sidePanel.bridge.status': handleBridgeStatus,
+    'sidePanel.sessions.list': handleListSessions,
     'sidePanel.scope.current': handleScopeCurrent,
     'sidePanel.settings.get': handleSettingsGet
   }
@@ -39,7 +42,7 @@ async function handleStatus({ context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
-  const bridge = buildBridgeStatus(config, module.enabled);
+  const bridge = await readBridgeStatus({ config, module, connection, context });
   const scope = buildScope(config, identity, connection);
   const state = derivePanelState(module, connection, bridge);
 
@@ -55,20 +58,54 @@ async function handleStatus({ context }) {
     bridge,
     scope,
     phase: {
-      current: 'Phase 2: Side Panel shell and registry ready',
-      next: 'Phase 3: Session Bridge Adapter MVP'
+      current: 'Phase 3: Session Bridge Adapter MVP',
+      next: 'Phase 4: New and switch actions with confirmation gates'
     },
     updatedAt: new Date().toISOString()
   });
 }
 
 async function handleBridgeStatus({ context }) {
-  const { config } = await readPanelContext(context);
+  const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
+  const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
 
   return ok({
-    bridge: buildBridgeStatus(config, module.enabled),
+    bridge: await readBridgeStatus({ config, module, connection, context }),
     module
+  });
+}
+
+async function handleListSessions({ context }) {
+  const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
+  const module = buildModuleStatus(config);
+  const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
+  const bridge = await readBridgeStatus({ config, module, connection, context });
+  const scope = buildScope(config, identity, connection);
+  const gate = derivePanelState(module, connection, bridge);
+
+  if (gate !== 'ready') {
+    return ok({
+      state: gate,
+      bridge,
+      scope,
+      sessions: [],
+      currentBinding: null,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  const result = await createSessionAdapter(config, context).listSessions(scope);
+  return ok({
+    state: result.state,
+    bridge: result.bridge ? mergeBridgeStatus(bridge, result.bridge) : bridge,
+    scope,
+    sessions: result.sessions || [],
+    currentBinding: result.currentBinding || null,
+    bridgeId: result.bridgeId || bridge.remote?.bridgeId || '',
+    unresolved: Boolean(result.unresolved),
+    error: result.ok === false ? redactDiagnostic(result.message || result.error) : '',
+    updatedAt: new Date().toISOString()
   });
 }
 
@@ -185,8 +222,49 @@ function buildBridgeStatus(config, moduleEnabled) {
     configured,
     baseUrlConfigured,
     authConfigured,
-    timeoutMs: config.sessionBridgeTimeoutMs
+    timeoutMs: config.sessionBridgeTimeoutMs,
+    permission: {
+      required: configured,
+      granted: false,
+      origin: ''
+    },
+    available: false,
+    remote: null,
+    error: ''
   };
+}
+
+async function readBridgeStatus({ config, module, connection, context }) {
+  const bridge = buildBridgeStatus(config, module.enabled);
+  if (!module.enabled || !connection.paired || !connection.online || !bridge.configured) {
+    return bridge;
+  }
+
+  const adapterStatus = await createSessionAdapter(config, context).status();
+  return mergeBridgeStatus(bridge, adapterStatus);
+}
+
+function mergeBridgeStatus(bridge, adapterStatus) {
+  const next = {
+    ...bridge,
+    state: adapterStatus.state || bridge.state,
+    permission: adapterStatus.permission || bridge.permission,
+    timeoutMs: adapterStatus.timeoutMs || bridge.timeoutMs,
+    available: Boolean(adapterStatus.available),
+    error: redactDiagnostic(adapterStatus.error || ''),
+    remote: adapterStatus.metadata
+      ? {
+          bridgeId: adapterStatus.metadata.bridgeId,
+          bridgeName: adapterStatus.metadata.bridgeName,
+          adapter: adapterStatus.metadata.adapter,
+          capabilities: adapterStatus.metadata.capabilities
+        }
+      : null
+  };
+  if (adapterStatus.ready && adapterStatus.state === 'configured') {
+    next.state = 'configured';
+  }
+  return next;
 }
 
 function buildScope(config, identity, connection) {
@@ -216,7 +294,23 @@ function derivePanelState(module, connection, bridge) {
   if (!bridge.configured) {
     return 'missing_config';
   }
+  if (bridge.state === 'permission_required') {
+    return 'bridge_permission_required';
+  }
+  if (bridge.state === 'invalid_base_url') {
+    return 'missing_config';
+  }
+  if (bridge.state === 'unauthorized' || bridge.state === 'timeout' || bridge.state === 'fetch_failed' || bridge.state === 'http_error' || bridge.state === 'unavailable') {
+    return 'bridge_unavailable';
+  }
   return 'ready';
+}
+
+function createSessionAdapter(config, context) {
+  return new OpenClawSessionAdapter({
+    config,
+    chromeApi: context.chrome
+  });
 }
 
 function ok(payload) {

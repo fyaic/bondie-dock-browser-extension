@@ -14,6 +14,9 @@ const elements = {
   routeValue: document.getElementById('routeValue'),
   deviceValue: document.getElementById('deviceValue'),
   actionHint: document.getElementById('actionHint'),
+  bridgePermission: document.getElementById('bridgePermission'),
+  sessionsEmpty: document.getElementById('sessionsEmpty'),
+  sessionsList: document.getElementById('sessionsList'),
   newSession: document.getElementById('newSession'),
   switchSession: document.getElementById('switchSession'),
   phaseValue: document.getElementById('phaseValue'),
@@ -42,10 +45,30 @@ const STATE_COPY = {
     title: 'Session Bridge 尚未配置',
     summary: '连接状态可用，下一步需要补齐 Bridge URL 和 token 才能列出 scoped sessions。'
   },
+  bridge_permission_required: {
+    kicker: '等待授权',
+    title: '需要允许访问 Session Bridge',
+    summary: '浏览器还没有授予 Bridge 地址访问权限。授权后才会发起 status/list 请求。'
+  },
+  bridge_unavailable: {
+    kicker: 'Bridge 不可用',
+    title: 'Session Bridge 暂时不可达',
+    summary: '配置和配对已满足，但 Bridge 健康检查或元数据读取失败。'
+  },
+  scope_unresolved: {
+    kicker: 'Scope 未解析',
+    title: '当前 scope 没有可用会话',
+    summary: 'Bridge 没有返回当前浏览器 scope 可访问的 OpenClaw 会话。'
+  },
+  empty_sessions: {
+    kicker: '空列表',
+    title: '当前 scope 暂无会话',
+    summary: 'Session Bridge 已连接，但当前 workspace/route 下没有可展示的历史会话。'
+  },
   ready: {
     kicker: 'Ready',
-    title: 'Side Panel shell 已就绪',
-    summary: '连接、配对和 Bridge 配置都已满足，可以进入会话列表 adapter。'
+    title: 'Session Bridge 已接入',
+    summary: '连接、配对、权限和 Bridge 状态都已满足，正在显示 scoped sessions。'
   },
   booting: {
     kicker: '启动中',
@@ -59,13 +82,18 @@ const STATE_COPY = {
   }
 };
 
+let currentBridgePermissionOrigin = '';
+let selectedSessionId = '';
+let lastStatusPayload = null;
+
 elements.refresh.addEventListener('click', () => refreshStatus());
 elements.openOptions.addEventListener('click', () => chrome.runtime.openOptionsPage());
+elements.bridgePermission.addEventListener('click', requestBridgePermission);
 elements.newSession.title = 'Phase 4 会启用新开对话，并按 new_conversation_confirmed 判断完成态';
 elements.switchSession.title = 'Phase 4 会启用切换会话，并按 route_switch_confirmed 判断完成态';
 
 refreshStatus();
-setInterval(refreshStatus, 4000);
+setInterval(refreshStatus, 7000);
 
 async function refreshStatus() {
   setLoading(true);
@@ -75,12 +103,71 @@ async function refreshStatus() {
       renderError(response?.error || 'Side Panel status unavailable');
       return;
     }
-    renderStatus(response.payload || {});
+    lastStatusPayload = response.payload || {};
+    renderStatus(lastStatusPayload);
+    if (response.payload?.state === 'ready') {
+      await refreshSessions();
+    } else {
+      renderSessions({ state: response.payload?.state || 'booting', sessions: [] });
+    }
   } catch (error) {
     renderError(error.message);
   } finally {
     setLoading(false);
   }
+}
+
+async function refreshSessions() {
+  renderSessions({ state: 'loading_sessions', sessions: [] });
+  const response = await chrome.runtime.sendMessage({ type: 'sidePanel.sessions.list' });
+  if (!response?.ok) {
+    renderSessions({
+      state: 'bridge_unavailable',
+      sessions: [],
+      error: response?.error || 'Session list unavailable'
+    });
+    return;
+  }
+  const payload = response.payload || {};
+  if (payload.state && payload.state !== 'ready') {
+    renderStatus({
+      ...(lastStatusPayload || {}),
+      ...payload,
+      module: lastStatusPayload?.module || {},
+      connection: lastStatusPayload?.connection || {},
+      phase: lastStatusPayload?.phase || {
+        current: 'Phase 3: Session Bridge Adapter MVP',
+        next: 'Phase 4: New and switch actions with confirmation gates'
+      }
+    });
+  }
+  renderSessions(payload);
+}
+
+async function requestBridgePermission() {
+  if (!currentBridgePermissionOrigin || !chrome.permissions?.request) {
+    renderSessions({
+      state: 'bridge_permission_required',
+      sessions: [],
+      error: '当前浏览器不支持动态授权 Bridge 地址'
+    });
+    return;
+  }
+
+  const granted = await new Promise((resolve) => {
+    chrome.permissions.request({ origins: [currentBridgePermissionOrigin] }, (result) => {
+      resolve(Boolean(result));
+    });
+  });
+  if (!granted) {
+    renderSessions({
+      state: 'bridge_permission_required',
+      sessions: [],
+      error: '授权未完成，暂不访问 Session Bridge'
+    });
+    return;
+  }
+  await refreshStatus();
 }
 
 function renderStatus(payload) {
@@ -91,6 +178,7 @@ function renderStatus(payload) {
   const module = payload.module || {};
   const scope = payload.scope || {};
 
+  currentBridgePermissionOrigin = bridge.permission?.origin || '';
   elements.panelState.textContent = stateLabel(state);
   elements.panelState.dataset.state = statusTone(state);
   elements.stateKicker.textContent = copy.kicker;
@@ -98,18 +186,108 @@ function renderStatus(payload) {
   elements.stateSummary.textContent = copy.summary;
   elements.pairingValue.textContent = pairingLabel(connection);
   elements.onlineValue.textContent = onlineLabel(connection);
-  elements.moduleValue.textContent = module.enabled ? '已启用' : '已禁用';
+  elements.moduleValue.textContent = module.enabled === false ? '已禁用' : '已启用';
   elements.bridgeValue.textContent = bridgeLabel(bridge);
   elements.scopeHint.textContent = scope.route_label || 'Browser route';
   elements.workspaceValue.textContent = scope.workspace_id || 'default';
   elements.routeValue.textContent = scope.route_key || 'browser:default';
   elements.deviceValue.textContent = shortId(scope.device_id || connection.hostId || '');
   elements.actionHint.textContent = actionHint(payload);
-  elements.phaseValue.textContent = payload.phase?.current || 'Phase 2';
-  elements.nextStep.textContent = payload.phase?.next || '下一步接入 Session Bridge adapter。';
+  elements.phaseValue.textContent = payload.phase?.current || 'Phase 3';
+  elements.nextStep.textContent = payload.phase?.next || '下一步接入 new/switch confirmation gates。';
   elements.newSession.disabled = true;
   elements.switchSession.disabled = true;
+  elements.bridgePermission.hidden = state !== 'bridge_permission_required' || !currentBridgePermissionOrigin;
   elements.diagnosticsOutput.textContent = diagnosticsText(payload);
+}
+
+function renderSessions(payload) {
+  const state = payload.state || 'booting';
+  const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+  const currentId = payload.currentBinding?.session_id || '';
+
+  elements.sessionsList.replaceChildren();
+  if (!sessions.length) {
+    elements.sessionsEmpty.hidden = false;
+    elements.sessionsEmpty.textContent = sessionsEmptyText(state, payload.error);
+    selectedSessionId = '';
+    return;
+  }
+
+  elements.sessionsEmpty.hidden = true;
+  if (!sessions.some((session) => sessionIdentity(session) === selectedSessionId)) {
+    selectedSessionId = currentId || sessions[0].session_id || sessions[0].session_key || '';
+  }
+
+  for (const session of sessions) {
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    const id = sessionIdentity(session);
+    const isCurrent = session.is_current === true || (currentId && currentId === session.session_id);
+    button.type = 'button';
+    button.className = 'session-card';
+    button.setAttribute('aria-selected', id === selectedSessionId ? 'true' : 'false');
+    button.disabled = session.restorable === false;
+    button.title = sessionTitle(session);
+    button.addEventListener('click', () => {
+      selectedSessionId = id;
+      renderSessions({ ...payload, sessions });
+    });
+    button.appendChild(sessionTitleRow(session, isCurrent));
+    button.appendChild(sessionSummary(session));
+    button.appendChild(sessionMeta(session));
+    button.appendChild(sessionKey(session));
+    item.appendChild(button);
+    elements.sessionsList.appendChild(item);
+  }
+}
+
+function sessionTitleRow(session, isCurrent) {
+  const row = document.createElement('div');
+  const title = document.createElement('span');
+  title.className = 'session-title';
+  title.textContent = sessionTitle(session);
+  row.className = 'session-title-row';
+  row.appendChild(title);
+  if (isCurrent) {
+    const pill = document.createElement('span');
+    pill.className = 'session-pill';
+    pill.textContent = '当前';
+    row.appendChild(pill);
+  }
+  if (session.empty) {
+    const pill = document.createElement('span');
+    pill.className = 'session-pill';
+    pill.textContent = '空白';
+    row.appendChild(pill);
+  }
+  return row;
+}
+
+function sessionSummary(session) {
+  const summary = document.createElement('div');
+  summary.className = 'session-summary';
+  summary.textContent = session.summary || lastMessagePreview(session.last_messages) || '暂无摘要';
+  return summary;
+}
+
+function sessionMeta(session) {
+  const meta = document.createElement('div');
+  meta.className = 'session-meta';
+  meta.textContent = [
+    session.model || '',
+    session.project || '',
+    formatTime(session.updated_at),
+    tokenText(session)
+  ].filter(Boolean).join(' · ');
+  return meta;
+}
+
+function sessionKey(session) {
+  const key = document.createElement('div');
+  key.className = 'session-key';
+  key.textContent = shortId(session.session_key || session.session_id || '');
+  return key;
 }
 
 function renderError(message) {
@@ -124,6 +302,10 @@ function renderError(message) {
   elements.moduleValue.textContent = '未知';
   elements.bridgeValue.textContent = '未知';
   elements.actionHint.textContent = '状态读取失败，无法启用会话动作';
+  elements.bridgePermission.hidden = true;
+  elements.sessionsList.replaceChildren();
+  elements.sessionsEmpty.hidden = false;
+  elements.sessionsEmpty.textContent = '状态读取失败，无法加载会话列表';
   elements.diagnosticsOutput.textContent = `error: ${redactText(message)}`;
 }
 
@@ -137,7 +319,12 @@ function stateLabel(state) {
     unpaired: '未配对',
     offline: '离线',
     missing_config: '待配置',
+    bridge_permission_required: '待授权',
+    bridge_unavailable: 'Bridge 异常',
+    scope_unresolved: 'Scope 未解析',
+    empty_sessions: '空列表',
     ready: 'Ready',
+    loading_sessions: '加载中',
     booting: '检查中'
   };
   return labels[state] || '检查中';
@@ -147,10 +334,10 @@ function statusTone(state) {
   if (state === 'ready') {
     return 'online';
   }
-  if (state === 'missing_config' || state === 'offline') {
+  if (state === 'missing_config' || state === 'offline' || state === 'bridge_permission_required' || state === 'empty_sessions' || state === 'scope_unresolved') {
     return 'paired';
   }
-  if (state === 'booting') {
+  if (state === 'booting' || state === 'loading_sessions') {
     return 'connecting';
   }
   return 'offline';
@@ -186,6 +373,21 @@ function bridgeLabel(bridge) {
   if (bridge.state === 'disabled') {
     return '模块已禁用';
   }
+  if (bridge.state === 'permission_required') {
+    return '需要授权访问';
+  }
+  if (bridge.available) {
+    return bridge.remote?.bridgeName || 'Bridge 在线';
+  }
+  if (bridge.state === 'unauthorized') {
+    return 'Token 被拒绝';
+  }
+  if (bridge.state === 'timeout') {
+    return '请求超时';
+  }
+  if (bridge.state === 'fetch_failed' || bridge.state === 'http_error' || bridge.state === 'unavailable') {
+    return '暂不可达';
+  }
   if (bridge.configured) {
     return '已配置 URL 与 token';
   }
@@ -200,7 +402,19 @@ function bridgeLabel(bridge) {
 
 function actionHint(payload) {
   if (payload.state === 'ready') {
-    return 'Session Bridge adapter 接入后启用 new/switch';
+    return 'Session Bridge 已接入，new/switch 动作会在 Phase 4 启用';
+  }
+  if (payload.state === 'bridge_permission_required') {
+    return '点击授权按钮后才会访问 Bridge 地址';
+  }
+  if (payload.state === 'bridge_unavailable') {
+    return '检查 Bridge 服务、网络、token 或超时设置';
+  }
+  if (payload.state === 'scope_unresolved') {
+    return '当前 scope 没有被 Bridge 解析为可访问会话';
+  }
+  if (payload.state === 'empty_sessions') {
+    return '当前 scope 暂无历史会话';
   }
   if (payload.state === 'missing_config') {
     return bridgeConfigHint(payload.bridge || {});
@@ -224,6 +438,25 @@ function bridgeConfigHint(bridge) {
   return '补齐 Bridge 配置后再加载会话列表';
 }
 
+function sessionsEmptyText(state, error) {
+  if (error) {
+    return redactText(error);
+  }
+  const labels = {
+    loading_sessions: '正在从 Session Bridge 加载 scoped sessions',
+    disabled: '侧栏模块已禁用',
+    unpaired: '完成 OpenClaw 配对后再加载会话',
+    offline: 'OpenClaw 在线后再加载会话',
+    missing_config: '补齐 Bridge URL 和 token 后再加载会话',
+    bridge_permission_required: '授权 Bridge 地址后再加载会话',
+    bridge_unavailable: 'Session Bridge 暂不可达',
+    scope_unresolved: '当前 scope 未解析到可访问会话',
+    empty_sessions: '当前 scope 暂无历史会话',
+    ready: '当前 scope 暂无历史会话'
+  };
+  return labels[state] || '等待会话列表';
+}
+
 function diagnosticsText(payload) {
   const connection = payload.connection || {};
   const bridge = payload.bridge || {};
@@ -232,13 +465,55 @@ function diagnosticsText(payload) {
     `module: ${payload.module?.id || 'openclaw-side-panel'}`,
     `adapter: ${bridge.adapter || 'session-bridge'}`,
     `bridge_state: ${bridge.state || 'unknown'}`,
+    `bridge_available: ${Boolean(bridge.available)}`,
     `bridge_configured: ${Boolean(bridge.configured)}`,
     `bridge_auth_configured: ${Boolean(bridge.authConfigured)}`,
+    `bridge_permission_granted: ${Boolean(bridge.permission?.granted)}`,
+    `remote_bridge: ${bridge.remote?.bridgeId || 'unknown'}`,
     `host: ${shortId(connection.hostId || '')}`,
-    `last_error: ${redactText(connection.lastError || 'none')}`,
+    `last_error: ${redactText(bridge.error || connection.lastError || 'none')}`,
     `updated_at: ${payload.updatedAt || 'unknown'}`
   ];
   return lines.join('\n');
+}
+
+function sessionTitle(session) {
+  return String(session.title || session.session_id || session.session_key || 'OpenClaw session').trim();
+}
+
+function sessionIdentity(session) {
+  return session.session_id || session.session_key || '';
+}
+
+function lastMessagePreview(messages) {
+  if (!Array.isArray(messages) || !messages.length) {
+    return '';
+  }
+  const last = messages[messages.length - 1];
+  return String(last?.content || last?.text || last || '').trim();
+}
+
+function formatTime(value) {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 16);
+  }
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function tokenText(session) {
+  if (!Number.isFinite(session.context_used) || !Number.isFinite(session.context_window) || !session.context_window) {
+    return '';
+  }
+  return `${session.context_used}/${session.context_window} tokens`;
 }
 
 function shortId(value) {

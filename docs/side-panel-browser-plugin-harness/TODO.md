@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 2 - Side Panel shell/registry 审核修复与 Chrome smoke 已完成，等待本地提交与 Session Bridge Adapter MVP。
+当前阶段：Phase 3 - Session Bridge Adapter MVP 已实现并通过 adapter/视觉 smoke，等待本地提交确认与 Phase 4 new/switch actions。
 
 ## 已完成
 
@@ -21,12 +21,13 @@
 - [x] 拆 Phase 1 实现 issue：Manifest and Side Panel Shell (`AIC-2913`)。
 - [x] 拆 Phase 2 实现 issue：Feature Module Registry (`AIC-2914`)。
 - [x] 拆 Phase 3 实现 issue：Session Adapter MVP (`AIC-2915`)。
-- [ ] 将 Phase 0 文档变更提交到新分支。
+- [x] 将 Phase 0-2 文档与 shell/registry 变更提交到新分支：`d9e6f4b Add browser side panel shell`。
 - [x] 推进 Phase 1：Manifest and Side Panel Shell。
 - [x] 推进 Phase 2 最小部分：静态 feature module registry 与 `openclaw-side-panel` manifest。
 - [x] 完成 rose-skill 审核修复：trusted pairing、Bridge URL+token gate、Options 配置入口、popup 显式打开入口、Phase 文案同步。
 - [x] 完成 Chrome for Testing unpacked extension smoke：扩展加载、Side Panel 页面渲染、Popup 打开入口、Options Bridge 配置项。
-- [ ] 推进 Phase 3：Session Bridge Adapter MVP。
+- [x] 推进 Phase 3：Session Bridge Adapter MVP。
+- [ ] 本地提交 Phase 3 adapter/UI/harness 变更。
 
 ## Linear 树
 
@@ -57,7 +58,18 @@
 - [x] disabled/missing config/paired/online 状态有明确响应。
 - [x] side panel ready gate 基于 trusted paired + online + Bridge URL/token fully configured。
 - [x] Options 页提供 Side Panel / Session Bridge 配置入口。
-- [ ] 将 `sidePanel.sessions.*` 从占位推进到 Session Bridge adapter。
+- [x] 将 `sidePanel.sessions.list` 从占位推进到 Session Bridge adapter。
+- [ ] 将 `sidePanel.sessions.new` / `sidePanel.sessions.switch` 推进到 Phase 4 confirmation-gated actions。
+
+## Phase 3 实现草案
+
+- [x] 新增 `extension/src/modules/openclaw-side-panel/contract.js`，隔离通用 scope 到旧 B API query 的临时映射。
+- [x] 新增 `extension/src/modules/openclaw-side-panel/session-adapter.js`，支持 `/health`、`/v1/bridge`、`/v1/sessions`。
+- [x] 缺 Bridge URL/token 时 fail closed，不发请求。
+- [x] 缺 host permission 时返回 `permission_required`，不发请求。
+- [x] Side Panel UI 提供用户手势触发的 Bridge host permission 授权入口。
+- [x] Side Panel UI 渲染 adapter 返回的 scoped sessions，不合成全局/最近/模糊会话。
+- [x] Phase 3 仍禁用 new/switch，保留 Phase 4 confirmation gate。
 
 ## 本轮验证
 
@@ -76,11 +88,16 @@
 - [x] `./scripts/package-extension.sh`
 - [x] `git diff --check`
 - [x] Chrome for Testing unpacked extension smoke：service worker 注册、Side Panel 页面渲染、Popup 打开入口、Options Bridge 配置项。
+- [x] `node --check "extension/src/modules/openclaw-side-panel/contract.js"`
+- [x] `node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"`
+- [x] Chrome for Testing adapter smoke：缺 host permission 不发请求；授权后 `/health`、`/v1/bridge`、`/v1/sessions` 路径和 Bearer header 正常；公开 payload 不含 token。
+- [x] Chrome for Testing visual smoke：390px 侧栏宽度下 scoped sessions、长 route key、长 session key 不重叠。
 
 ## 待确认
 
-- [ ] Session Bridge 是否继续作为独立本地/私网服务。
+- [x] Session Bridge MVP 继续作为独立本地/私网服务，由 `sessionBridgeBaseUrl` + `sessionBridgeToken` 配置。
 - [ ] Side Panel 是否需要成为默认 action 点击行为，还是保留 popup 并另设入口。
-- [ ] Session Bridge token 是否走现有 options 页配置，还是 side panel 模块单独配置。
+- [x] Session Bridge token 走现有 Options 页的 Side Panel / Session Bridge 配置区，UI/diagnostics 只显示已配置状态。
 - [x] 本轮执行记录已同步到 Linear `AIC-2913` / `AIC-2914` 评论。
+- [x] 本轮 Phase 3 执行记录同步到 Linear `AIC-2915` 评论。
 - [ ] 是否批量更新 Linear issue 状态。

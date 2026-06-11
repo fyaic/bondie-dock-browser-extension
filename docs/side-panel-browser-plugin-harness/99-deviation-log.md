@@ -37,3 +37,9 @@
 
 - 偏差：系统 Google Chrome 自动化加载 unpacked extension 时未观测到 extension service worker 注册。
   - 处理：未将该次尝试计为通过；改用 Playwright 自带 Chrome for Testing 重新执行 smoke，确认 unpacked extension 可加载、service worker 注册、Side Panel 页面渲染、Popup 打开入口返回 `side-panel-open-requested`、Options Bridge 配置项存在。
+
+- 偏差：Phase 3 adapter smoke 首次尝试在 extension service worker 内动态 `import()` adapter，被 Chrome 按 ServiceWorker 规范拒绝。
+  - 处理：未将该次尝试计为失败产品行为；改在 extension page 上动态导入同一 adapter 模块完成 smoke，验证缺 host permission 不发请求、授权后 status/list 路径和 Bearer header 正常、公开 payload 不含 token。
+
+- 偏差：旧 B `/v1/sessions` contract 仍使用 `WeComBinding` 字段名，且 `chat_type` 文档以 direct/group 为主。
+  - 处理：浏览器 UI 和 background 模块仍使用通用 `OpenClawSessionScope`；`contract.js` 在 adapter 内做显式临时映射，当前 `route_type=browser` 不暴露到 UI。若 B 现场需要浏览器原生 route 解析，后续应在 B 或新 Gateway adapter 中增加 browser route contract，而不是把 WeCom 概念回灌到 Side Panel UI。
