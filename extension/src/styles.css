@@ -298,6 +298,11 @@ button.primary {
   font-size: 14px;
 }
 
+.sidepanel-launch {
+  width: 100%;
+  min-height: 36px;
+}
+
 .service-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

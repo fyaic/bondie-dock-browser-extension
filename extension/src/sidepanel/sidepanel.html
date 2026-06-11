@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenClaw Side Panel</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="sidepanel.css">
+  </head>
+  <body class="sidepanel-body">
+    <main class="sidepanel-shell">
+      <header class="sidepanel-header">
+        <div class="brand sidepanel-brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>
+            <strong>OpenClaw</strong>
+            <small>Side Panel</small>
+          </span>
+        </div>
+        <div class="header-actions">
+          <span id="panelState" class="status" data-state="offline">检查中</span>
+          <button id="refresh" class="icon-button" type="button" title="刷新状态" aria-label="刷新状态">↻</button>
+          <button id="openOptions" class="icon-button" type="button" title="设置" aria-label="设置">⚙</button>
+        </div>
+      </header>
+
+      <section class="hero-status" aria-live="polite">
+        <span id="stateKicker" class="state-kicker">启动中</span>
+        <h1 id="stateTitle">正在读取 OpenClaw 状态</h1>
+        <p id="stateSummary">Side Panel 会通过后台模块获取连接、配对和配置状态。</p>
+      </section>
+
+      <section class="status-matrix" aria-label="连接和配置状态">
+        <div class="status-row">
+          <span>设备配对</span>
+          <strong id="pairingValue">检查中</strong>
+        </div>
+        <div class="status-row">
+          <span>OpenClaw 连接</span>
+          <strong id="onlineValue">检查中</strong>
+        </div>
+        <div class="status-row">
+          <span>Feature module</span>
+          <strong id="moduleValue">检查中</strong>
+        </div>
+        <div class="status-row">
+          <span>Session Bridge</span>
+          <strong id="bridgeValue">检查中</strong>
+        </div>
+      </section>
+
+      <section class="section sidepanel-section">
+        <div class="section-heading">
+          <div>
+            <h2>当前 Scope</h2>
+            <p id="scopeHint">Browser route</p>
+          </div>
+        </div>
+        <dl class="scope-list">
+          <div>
+            <dt>Workspace</dt>
+            <dd id="workspaceValue">default</dd>
+          </div>
+          <div>
+            <dt>Route</dt>
+            <dd id="routeValue">browser:default</dd>
+          </div>
+          <div>
+            <dt>Device</dt>
+            <dd id="deviceValue">待生成</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section sidepanel-section">
+        <div class="section-heading">
+          <div>
+            <h2>会话控制</h2>
+            <p id="actionHint">等待 Session Bridge adapter</p>
+          </div>
+        </div>
+        <div class="session-actions">
+          <button id="newSession" class="primary-action" type="button" disabled>新开对话</button>
+          <button id="switchSession" type="button" disabled>切换会话</button>
+        </div>
+      </section>
+
+      <section class="section sidepanel-section">
+        <div class="section-heading">
+          <div>
+            <h2>当前阶段</h2>
+            <p id="phaseValue">Phase 2</p>
+          </div>
+        </div>
+        <p id="nextStep" class="next-step">下一步会接入 Session Bridge adapter。</p>
+      </section>
+
+      <details class="diagnostics">
+        <summary>诊断信息</summary>
+        <pre id="diagnosticsOutput">等待状态刷新</pre>
+      </details>
+    </main>
+    <script src="sidepanel.js"></script>
+  </body>
+</html>

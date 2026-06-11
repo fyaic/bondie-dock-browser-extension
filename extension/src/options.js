@@ -18,10 +18,28 @@ const fields = [
   'mediaToNotesOutputDir',
   'mediaToNotesEnvFile',
   'mediaToNotesDefaultFlags',
-  'suggestionsEnabled'
+  'suggestionsEnabled',
+  'sidePanelEnabled',
+  'sidePanelAdapter',
+  'sessionBridgeBaseUrl',
+  'sessionBridgeToken',
+  'sessionBridgeTimeoutMs',
+  'sidePanelWorkspaceId',
+  'sidePanelRouteKey',
+  'sidePanelRouteLabel'
 ];
 const DEFAULT_CAPTURE_SESSION_KEY = 'browser-inbox';
 const DEFAULT_CAPTURE_SESSION_NAME = 'OpenClaw 本地通道';
+const fieldDefaults = {
+  sidePanelEnabled: true,
+  sidePanelAdapter: 'session-bridge',
+  sessionBridgeBaseUrl: '',
+  sessionBridgeToken: '',
+  sessionBridgeTimeoutMs: 20000,
+  sidePanelWorkspaceId: 'default',
+  sidePanelRouteKey: 'browser:default',
+  sidePanelRouteLabel: 'Browser'
+};
 const message = document.getElementById('message');
 
 load();
@@ -32,14 +50,15 @@ async function load() {
   const data = await chrome.storage.local.get(fields);
   for (const field of fields) {
     const el = document.getElementById(field);
+    const value = data[field] ?? fieldDefaults[field];
     if (el.type === 'checkbox') {
-      el.checked = Boolean(data[field]);
+      el.checked = Boolean(value);
     } else if (el.type === 'number') {
-      el.value = data[field] || '';
+      el.value = value || '';
     } else if (field === 'captureSessionKey') {
-      el.value = displaySessionKey(data[field]);
+      el.value = displaySessionKey(value);
     } else {
-      el.value = data[field] || '';
+      el.value = value || '';
     }
   }
 }

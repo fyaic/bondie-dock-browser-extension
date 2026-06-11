@@ -57,6 +57,51 @@
         </section>
 
         <section class="settings-panel">
+          <h2>OpenClaw Side Panel</h2>
+          <label class="switch-row">
+            <input id="sidePanelEnabled" type="checkbox">
+            <span>
+              <strong>启用侧栏模块</strong>
+              <small>保留 popup 默认入口，侧栏通过显式按钮或浏览器侧栏打开。</small>
+            </span>
+          </label>
+          <div class="form-grid">
+            <label>
+              Adapter
+              <select id="sidePanelAdapter">
+                <option value="session-bridge">Session Bridge</option>
+              </select>
+            </label>
+            <label>
+              超时毫秒数
+              <input id="sessionBridgeTimeoutMs" type="number" min="1000" max="120000" step="1000">
+            </label>
+          </div>
+          <label>
+            Session Bridge URL
+            <input id="sessionBridgeBaseUrl" placeholder="http://127.0.0.1:8787">
+          </label>
+          <label>
+            Session Bridge token
+            <input id="sessionBridgeToken" type="password" autocomplete="off" placeholder="本地 Bridge 访问 token">
+          </label>
+          <div class="form-grid">
+            <label>
+              Workspace
+              <input id="sidePanelWorkspaceId" placeholder="default">
+            </label>
+            <label>
+              Route key
+              <input id="sidePanelRouteKey" placeholder="browser:default">
+            </label>
+          </div>
+          <label>
+            Route label
+            <input id="sidePanelRouteLabel" placeholder="Browser">
+          </label>
+        </section>
+
+        <section class="settings-panel">
           <h2>页面智能</h2>
           <label class="switch-row">
             <input id="contextCaptureEnabled" type="checkbox">

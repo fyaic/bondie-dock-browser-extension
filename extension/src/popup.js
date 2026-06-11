@@ -10,6 +10,7 @@ const candidateList = document.getElementById('candidateList');
 const suggestionList = document.getElementById('suggestionList');
 const mediaPluginLabel = document.getElementById('mediaPluginLabel');
 const captureContextButton = document.getElementById('captureContext');
+const openSidePanelButton = document.getElementById('openSidePanel');
 const mainView = document.getElementById('mainView');
 const settingsView = document.getElementById('settingsView');
 const popupViews = {
@@ -49,6 +50,7 @@ bind('scanPatterns', { type: 'scanPatterns' });
 bindPageServices();
 bindPopupViews();
 document.addEventListener('click', handleWorkflowClick);
+openSidePanelButton.addEventListener('click', openSidePanel);
 document.getElementById('openSettings').addEventListener('click', () => showSettings(true));
 document.getElementById('closeSettings').addEventListener('click', () => showSettings(false));
 document.getElementById('openHistory').addEventListener('click', () => {
@@ -109,6 +111,27 @@ async function sendPageService(service) {
     type: 'pageService',
     payload: { service }
   }, service);
+}
+
+async function openSidePanel() {
+  if (!chrome.sidePanel?.open) {
+    showPageHint('当前浏览器不支持 Side Panel API');
+    render({ ok: false, error: 'Side Panel API is not available in this browser' });
+    return;
+  }
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.windowId) {
+      throw new Error('No active browser window');
+    }
+    await chrome.sidePanel.open({ windowId: tab.windowId });
+    showPageHint('Side Panel 已请求打开');
+    render({ ok: true, payload: { status: 'side-panel-open-requested' } });
+  } catch (error) {
+    showPageHint('Side Panel 打开失败');
+    render({ ok: false, error: `Side Panel 打开失败: ${error.message}` });
+  }
 }
 
 async function refreshPageMeta() {
@@ -240,8 +263,7 @@ function serviceMessage(service, phase) {
 
 function renderServiceResult(response, service) {
   render(response);
-  pageHintHoldUntil = Date.now() + 8000;
-  pageHint.textContent = response?.ok ? serviceMessage(service, 'done') : serviceFailureText(response);
+  showPageHint(response?.ok ? serviceMessage(service, 'done') : serviceFailureText(response));
 }
 
 function renderServicePending(service, origin = '') {
@@ -253,8 +275,7 @@ function renderServicePending(service, origin = '') {
       origin
     }
   });
-  pageHintHoldUntil = Date.now() + 8000;
-  pageHint.textContent = origin ? `${pendingText(service)} · ${origin}` : pendingText(service);
+  showPageHint(origin ? `${pendingText(service)} · ${origin}` : pendingText(service));
 }
 
 async function sendPageScopedMessage(message, service) {
@@ -288,10 +309,14 @@ async function sendPageScopedMessage(message, service) {
     await refreshStatus();
     await refreshWorkflow();
   } catch (error) {
-    pageHintHoldUntil = Date.now() + 8000;
-    pageHint.textContent = '发送失败';
+    showPageHint('发送失败');
     render({ ok: false, error: error.message });
   }
+}
+
+function showPageHint(text) {
+  pageHintHoldUntil = Date.now() + 8000;
+  pageHint.textContent = text;
 }
 
 async function sendAndRender(message) {

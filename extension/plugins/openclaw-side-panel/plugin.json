@@ -1,0 +1,22 @@
+{
+  "id": "openclaw-side-panel",
+  "name": "OpenClaw Side Panel",
+  "version": "0.1.0",
+  "type": "extension-feature-module",
+  "description": "OpenClaw conversation control and page-context side panel for Browser Host.",
+  "entry": "src/modules/openclaw-side-panel/module.js",
+  "ui": {
+    "sidePanel": "src/sidepanel/sidepanel.html"
+  },
+  "capabilities": [
+    "openclaw.sessions.list",
+    "openclaw.sessions.new",
+    "openclaw.sessions.switch",
+    "openclaw.sessions.signal"
+  ],
+  "permissions": [
+    "sidePanel",
+    "storage"
+  ],
+  "ownedBy": "openclaw-browser-host-extension"
+}

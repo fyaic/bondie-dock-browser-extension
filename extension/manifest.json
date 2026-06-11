@@ -16,6 +16,9 @@
     "default_popup": "src/popup.html"
   },
   "options_page": "src/options.html",
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
+  },
   "background": {
     "service_worker": "src/background-entry.js",
     "type": "module"
@@ -26,6 +29,7 @@
     "downloads",
     "notifications",
     "scripting",
+    "sidePanel",
     "storage",
     "tabs"
   ],

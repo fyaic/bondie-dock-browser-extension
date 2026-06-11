@@ -3,6 +3,10 @@ import {
   SNAPSHOT_ALARM_NAME,
   createPatternMemory
 } from './pattern-memory.js';
+import {
+  SIDE_PANEL_DEFAULT_CONFIG,
+  openClawSidePanelModule
+} from './modules/openclaw-side-panel/module.js';
 
 const DEFAULT_CONFIG = {
   gatewayUrl: '',
@@ -20,6 +24,7 @@ const DEFAULT_CONFIG = {
   mediaToNotesEnvFile: '',
   mediaToNotesDefaultFlags: '--skip-polish',
   suggestionsEnabled: true,
+  ...SIDE_PANEL_DEFAULT_CONFIG,
   ...DEFAULT_PATTERN_SETTINGS
 };
 const CONFIRM_TIMEOUT_MS = 5 * 60 * 1000;
@@ -50,6 +55,10 @@ const CAPABILITIES = [
   'browser.suggestion.show',
   'user.confirm'
 ];
+const FEATURE_MODULES = [
+  openClawSidePanelModule
+];
+const FEATURE_MESSAGE_HANDLERS = buildFeatureMessageHandlers(FEATURE_MODULES);
 const SUGGESTIONS_STORAGE_KEY = 'browserSuggestions';
 const HANDOFFS_STORAGE_KEY = 'browserHandoffs';
 const HANDOFF_TIMEOUT_ALARM_NAME = 'openclaw-handoff-timeout';
@@ -142,6 +151,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 initializeServiceWorker().catch((error) => setStatus({ lastError: error.message }));
 
 async function initializeServiceWorker() {
+  await ensureDefaultConfig();
   await restorePersistedStatus();
   await ensureHostIdentity();
   await patternMemory.ensureDefaults();
@@ -150,6 +160,20 @@ async function initializeServiceWorker() {
   await scheduleHandoffTimeoutAlarm();
   schedulePatternObservation('service-worker-ready', { immediate: true });
   await maybeAutoConnect();
+}
+
+async function ensureDefaultConfig() {
+  const keys = Object.keys(DEFAULT_CONFIG);
+  const existing = await chrome.storage.local.get(keys);
+  const missing = {};
+  for (const key of keys) {
+    if (existing[key] === undefined) {
+      missing[key] = DEFAULT_CONFIG[key];
+    }
+  }
+  if (Object.keys(missing).length) {
+    await chrome.storage.local.set(missing);
+  }
 }
 
 async function restorePersistedStatus() {
@@ -184,7 +208,12 @@ async function maybeAutoConnect() {
   }));
 }
 
-async function handleRuntimeMessage(message) {
+async function handleRuntimeMessage(message, sender) {
+  const featureResponse = await maybeHandleFeatureModuleMessage(message, sender);
+  if (featureResponse) {
+    return featureResponse;
+  }
+
   switch (message?.type) {
     case 'status':
       await maybeAutoConnect();
@@ -234,6 +263,52 @@ async function handleRuntimeMessage(message) {
     default:
       return { ok: false, error: `Unknown message type: ${message?.type}` };
   }
+}
+
+function buildFeatureMessageHandlers(modules) {
+  const handlers = new Map();
+  for (const module of modules) {
+    for (const [type, handler] of Object.entries(module.messages || {})) {
+      handlers.set(type, { module, handler });
+    }
+  }
+  return handlers;
+}
+
+async function maybeHandleFeatureModuleMessage(message, sender) {
+  const route = FEATURE_MESSAGE_HANDLERS.get(message?.type);
+  if (!route) {
+    return null;
+  }
+
+  return route.handler({
+    message,
+    sender,
+    context: {
+      chrome,
+      ensureHostIdentity,
+      getConfig: (keys) => chrome.storage.local.get(keys),
+      getConnectionStatus: () => ({ ...status }),
+      getTrustedPairingState
+    }
+  });
+}
+
+async function getTrustedPairingState() {
+  const stored = await chrome.storage.local.get([
+    'browserDeviceToken',
+    'browserPairingStatus'
+  ]);
+  const hasDeviceToken = Boolean(cleanConfigString(stored.browserDeviceToken));
+  const pairing = hasDeviceToken
+    ? 'paired'
+    : cleanConfigString(stored.browserPairingStatus) || cleanConfigString(status.pairing) || 'unpaired';
+
+  return {
+    paired: hasDeviceToken && pairing === 'paired',
+    hasDeviceToken,
+    pairing
+  };
 }
 
 async function connectGateway() {
