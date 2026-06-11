@@ -33,6 +33,8 @@ export const openClawSidePanelModule = {
     'sidePanel.status': handleStatus,
     'sidePanel.bridge.status': handleBridgeStatus,
     'sidePanel.sessions.list': handleListSessions,
+    'sidePanel.sessions.new': handleNewSession,
+    'sidePanel.sessions.switch': handleSwitchSession,
     'sidePanel.scope.current': handleScopeCurrent,
     'sidePanel.settings.get': handleSettingsGet
   }
@@ -58,11 +60,41 @@ async function handleStatus({ context }) {
     bridge,
     scope,
     phase: {
-      current: 'Phase 3: Session Bridge Adapter MVP',
-      next: 'Phase 4: New and switch actions with confirmation gates'
+      current: 'Phase 4: New and switch actions with confirmation gates',
+      next: 'Phase 5: Page Context Dock'
     },
     updatedAt: new Date().toISOString()
   });
+}
+
+async function handleNewSession({ message, context }) {
+  const actionContext = await readActionContext(context);
+  if (actionContext.gate !== 'ready') {
+    return ok(buildBlockedActionPayload('new', actionContext));
+  }
+
+  const result = await createSessionAdapter(actionContext.config, context).newConversation(actionContext.scope, {
+    messageCardStyle: message?.messageCardStyle || 'friendly'
+  });
+
+  return ok(buildActionPayload('new', actionContext, result));
+}
+
+async function handleSwitchSession({ message, context }) {
+  const actionContext = await readActionContext(context);
+  if (actionContext.gate !== 'ready') {
+    return ok(buildBlockedActionPayload('switch', actionContext));
+  }
+
+  const result = await createSessionAdapter(actionContext.config, context).switchSession(
+    actionContext.scope,
+    message?.sessionId,
+    {
+      messageCardStyle: message?.messageCardStyle || 'friendly'
+    }
+  );
+
+  return ok(buildActionPayload('switch', actionContext, result));
 }
 
 async function handleBridgeStatus({ context }) {
@@ -151,6 +183,23 @@ async function readPanelContext(context) {
     coreStatus: context.getConnectionStatus(),
     identity,
     trustedPairing
+  };
+}
+
+async function readActionContext(context) {
+  const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
+  const module = buildModuleStatus(config);
+  const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
+  const bridge = await readBridgeStatus({ config, module, connection, context });
+  const scope = buildScope(config, identity, connection);
+
+  return {
+    config,
+    module,
+    connection,
+    bridge,
+    scope,
+    gate: derivePanelState(module, connection, bridge)
   };
 }
 
@@ -311,6 +360,32 @@ function createSessionAdapter(config, context) {
     config,
     chromeApi: context.chrome
   });
+}
+
+function buildBlockedActionPayload(action, actionContext) {
+  return {
+    action,
+    state: actionContext.gate,
+    bridge: actionContext.bridge,
+    scope: actionContext.scope,
+    confirmed: false,
+    result: null,
+    error: actionContext.gate,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function buildActionPayload(action, actionContext, result) {
+  return {
+    action,
+    state: result.state,
+    bridge: result.bridge ? mergeBridgeStatus(actionContext.bridge, result.bridge) : actionContext.bridge,
+    scope: actionContext.scope,
+    confirmed: Boolean(result.result?.confirmed),
+    result: result.result || null,
+    error: result.ok === false ? redactDiagnostic(result.message || result.error) : '',
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function ok(payload) {

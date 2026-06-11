@@ -154,6 +154,49 @@
   min-width: 0;
 }
 
+.operation-result {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 10px;
+  background: rgba(248, 250, 247, 0.82);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.operation-result[data-state="confirmed"] {
+  border-color: rgba(11, 118, 84, 0.28);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.operation-result[data-state="unconfirmed"] {
+  border-color: rgba(166, 95, 20, 0.28);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.operation-result[data-state="failed"] {
+  border-color: rgba(163, 56, 45, 0.25);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.operation-result strong,
+.operation-result span {
+  overflow-wrap: anywhere;
+}
+
+.operation-result strong {
+  color: inherit;
+  font-size: 12px;
+}
+
+.operation-result span {
+  color: var(--muted);
+}
+
 .ghost-action {
   width: 100%;
   border-color: rgba(29, 79, 145, 0.24);

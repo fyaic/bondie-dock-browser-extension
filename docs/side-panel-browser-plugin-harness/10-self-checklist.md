@@ -23,12 +23,12 @@
 
 - [x] list sessions 只展示 adapter/OpenClaw 返回的 scoped sessions。
 - [x] scope 不足时 fail closed，不展示全局/最近/模糊 session。
-- [ ] new-session 不发送 `session_id`。
-- [ ] switch-session 必须发送目标 `session_id`。
+- [x] new-session 不发送 `session_id`。
+- [x] switch-session 必须发送目标 `session_id`。
 - [x] current 标记以 `session_id` 优先，不只看 `session_key`。
-- [ ] `new_conversation_confirmed=true` 才显示新开完成。
-- [ ] `route_switch_confirmed=true` 才显示切换完成。
-- [ ] delivery 状态与 route/session confirmation 分开展示。
+- [x] `new_conversation_confirmed=true` 才显示新开完成。
+- [x] `route_switch_confirmed=true` 才显示切换完成。
+- [x] delivery 状态与 route/session confirmation 分开展示。
 
 ## 安全检查
 
@@ -42,7 +42,7 @@
 
 - [x] Side Panel 宽度下标题、按钮、URL、session key 不溢出。
 - [x] loading、empty、offline、unpaired、unconfirmed、failed 都有明确状态。
-- [ ] destructive 或高影响 action 有二次确认。
+- [x] destructive 或高影响 action 有二次确认。
 - [x] disabled button 有可理解原因。
 - [x] 视觉语言与 alpha.12 popup/options/history 一致。
 - [x] 不出现死亡大直角、卡片套卡片、拥挤工具栏。

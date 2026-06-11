@@ -1,5 +1,7 @@
 import {
+  buildSessionBridgeActionPayload,
   buildSessionBridgeQuery,
+  normalizeOperationResult,
   normalizeSessionsPayload
 } from './contract.js';
 
@@ -104,6 +106,110 @@ export class OpenClawSessionAdapter {
     }
   }
 
+  async newConversation(scope, options = {}) {
+    const gate = await this.operationGate(scope);
+    if (!gate.ok) {
+      return gate.result;
+    }
+
+    try {
+      const payload = buildSessionBridgeActionPayload(scope, options);
+      const result = await this.fetchJson('/v1/sessions/new', {
+        method: 'POST',
+        protected: true,
+        jsonBody: payload
+      });
+      return {
+        ok: true,
+        state: result?.new_conversation_confirmed === true ? 'action_confirmed' : 'action_unconfirmed',
+        bridge: gate.readiness,
+        result: normalizeOperationResult(result, 'new')
+      };
+    } catch (error) {
+      return this.operationError(error, gate.readiness);
+    }
+  }
+
+  async switchSession(scope, sessionId, options = {}) {
+    const targetSessionId = cleanString(sessionId);
+    if (!targetSessionId) {
+      return {
+        ok: false,
+        state: 'missing_session_id',
+        error: 'missing_session_id',
+        message: 'Switch session requires a target session id',
+        sessions: []
+      };
+    }
+
+    const gate = await this.operationGate(scope);
+    if (!gate.ok) {
+      return gate.result;
+    }
+
+    try {
+      const payload = {
+        ...buildSessionBridgeActionPayload(scope, options),
+        session_id: targetSessionId
+      };
+      const result = await this.fetchJson('/v1/switch-session', {
+        method: 'POST',
+        protected: true,
+        jsonBody: payload
+      });
+      return {
+        ok: true,
+        state: result?.route_switch_confirmed === true ? 'action_confirmed' : 'action_unconfirmed',
+        bridge: gate.readiness,
+        result: normalizeOperationResult(result, 'switch')
+      };
+    } catch (error) {
+      return this.operationError(error, gate.readiness);
+    }
+  }
+
+  async operationGate(scope) {
+    const readiness = await this.readiness();
+    if (!readiness.ready) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          state: readiness.state,
+          error: readiness.state,
+          message: readiness.message,
+          bridge: readiness
+        }
+      };
+    }
+
+    const scopeCheck = validateScope(scope);
+    if (!scopeCheck.valid) {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          state: 'scope_unresolved',
+          error: 'scope_unresolved',
+          message: scopeCheck.message,
+          bridge: readiness
+        }
+      };
+    }
+
+    return { ok: true, readiness };
+  }
+
+  operationError(error, readiness) {
+    return {
+      ok: false,
+      state: error.state || 'bridge_unavailable',
+      error: error.state || 'bridge_unavailable',
+      message: sanitizeError(error),
+      bridge: readiness
+    };
+  }
+
   async readiness() {
     const baseUrl = cleanString(this.config.sessionBridgeBaseUrl);
     const token = cleanString(this.config.sessionBridgeToken);
@@ -170,7 +276,7 @@ export class OpenClawSessionAdapter {
     };
   }
 
-  async fetchJson(path, { protected: protectedEndpoint }) {
+  async fetchJson(path, { method = 'GET', protected: protectedEndpoint, jsonBody = null }) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), normalizeTimeout(this.config.sessionBridgeTimeoutMs));
     const headers = {
@@ -179,11 +285,15 @@ export class OpenClawSessionAdapter {
     if (protectedEndpoint) {
       headers.Authorization = `Bearer ${cleanString(this.config.sessionBridgeToken)}`;
     }
+    if (jsonBody) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     try {
       const response = await this.fetchImpl(joinUrl(this.config.sessionBridgeBaseUrl, path), {
-        method: 'GET',
+        method,
         headers,
+        body: jsonBody ? JSON.stringify(jsonBody) : undefined,
         signal: controller.signal,
         cache: 'no-store'
       });

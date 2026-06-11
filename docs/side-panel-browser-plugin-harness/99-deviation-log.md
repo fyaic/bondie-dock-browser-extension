@@ -43,3 +43,6 @@
 
 - 偏差：旧 B `/v1/sessions` contract 仍使用 `WeComBinding` 字段名，且 `chat_type` 文档以 direct/group 为主。
   - 处理：浏览器 UI 和 background 模块仍使用通用 `OpenClawSessionScope`；`contract.js` 在 adapter 内做显式临时映射，当前 `route_type=browser` 不暴露到 UI。若 B 现场需要浏览器原生 route 解析，后续应在 B 或新 Gateway adapter 中增加 browser route contract，而不是把 WeCom 概念回灌到 Side Panel UI。
+
+- 偏差：Phase 4 未对真实 Session Bridge 执行 `new-session` / `switch-session` mutation smoke。
+  - 处理：真实 mutation 会改变 OpenClaw 会话路由，属于高影响操作；本轮用 Chrome for Testing fake adapter smoke 验证 new payload 不含 `session_id`、switch payload 必含 `session_id`、confirmed gate 与 token 脱敏。真实 Bridge action smoke 留到有明确测试 scope 与授权 token 时执行。

@@ -19,6 +19,15 @@ export function buildSessionBridgeQuery(scope) {
   });
 }
 
+export function buildSessionBridgeActionPayload(scope, options = {}) {
+  const payload = buildSessionBridgeQuery(scope);
+  const messageCardStyle = cleanString(options.messageCardStyle || options.message_card_style) || 'friendly';
+  return {
+    ...payload,
+    message_card_style: messageCardStyle
+  };
+}
+
 export function normalizeSessionsPayload(payload) {
   const sessions = Array.isArray(payload?.sessions)
     ? payload.sessions.map(normalizeSession).filter(Boolean)
@@ -33,8 +42,41 @@ export function normalizeSessionsPayload(payload) {
   };
 }
 
+export function normalizeOperationResult(payload, action) {
+  return {
+    action,
+    bridgeId: cleanString(payload?.bridge_id),
+    confirmed: action === 'new'
+      ? isNewConversationConfirmed(payload)
+      : isRouteSwitchConfirmed(payload),
+    operationStatus: cleanString(payload?.operation_status),
+    operationWarning: cleanString(payload?.operation_warning),
+    deliveryStatus: cleanString(payload?.delivery_status),
+    deliveryOwner: cleanString(payload?.delivery_owner),
+    deliveryTransport: cleanString(payload?.delivery_transport),
+    session: normalizeSession(payload?.session),
+    binding: normalizeCurrentBinding(payload?.binding),
+    messageCard: normalizeMessageCard(payload?.message_card),
+    raw: {
+      new_conversation_confirmed: payload?.new_conversation_confirmed === true,
+      route_switch_confirmed: payload?.route_switch_confirmed === true,
+      user_visible_confirmation: payload?.user_visible_confirmation === true
+    }
+  };
+}
+
 export function isNewConversationConfirmed(result) {
   return result?.new_conversation_confirmed === true;
+}
+
+function normalizeMessageCard(card) {
+  if (!card || typeof card !== 'object') {
+    return null;
+  }
+  return {
+    title: cleanString(card.title),
+    text: cleanString(card.text)
+  };
 }
 
 export function isRouteSwitchConfirmed(result) {
@@ -64,8 +106,8 @@ function normalizeSession(session) {
     is_current: session.is_current === true,
     restorable: session.restorable !== false,
     empty: session.empty === true,
-    context_window: safeNumber(session.context_window || session.contextWindow),
-    context_used: safeNumber(session.context_used || session.contextUsed || session.tokens),
+    context_window: safeNumber(session.context_window ?? session.contextWindow),
+    context_used: safeNumber(session.context_used ?? session.contextUsed ?? session.tokens),
     last_messages: Array.isArray(session.last_messages) ? session.last_messages.slice(0, 3) : []
   };
 }

@@ -19,6 +19,7 @@ const elements = {
   sessionsList: document.getElementById('sessionsList'),
   newSession: document.getElementById('newSession'),
   switchSession: document.getElementById('switchSession'),
+  operationResult: document.getElementById('operationResult'),
   phaseValue: document.getElementById('phaseValue'),
   nextStep: document.getElementById('nextStep'),
   diagnosticsOutput: document.getElementById('diagnosticsOutput')
@@ -84,13 +85,17 @@ const STATE_COPY = {
 
 let currentBridgePermissionOrigin = '';
 let selectedSessionId = '';
+let selectedSession = null;
 let lastStatusPayload = null;
+let lastSessionsPayload = null;
 
 elements.refresh.addEventListener('click', () => refreshStatus());
 elements.openOptions.addEventListener('click', () => chrome.runtime.openOptionsPage());
 elements.bridgePermission.addEventListener('click', requestBridgePermission);
-elements.newSession.title = 'Phase 4 会启用新开对话，并按 new_conversation_confirmed 判断完成态';
-elements.switchSession.title = 'Phase 4 会启用切换会话，并按 route_switch_confirmed 判断完成态';
+elements.newSession.addEventListener('click', requestNewSession);
+elements.switchSession.addEventListener('click', requestSwitchSession);
+elements.newSession.title = '新开对话会调用 Session Bridge，并按 new_conversation_confirmed 判断完成态';
+elements.switchSession.title = '切换会话会调用 Session Bridge，并按 route_switch_confirmed 判断完成态';
 
 refreshStatus();
 setInterval(refreshStatus, 7000);
@@ -136,12 +141,83 @@ async function refreshSessions() {
       module: lastStatusPayload?.module || {},
       connection: lastStatusPayload?.connection || {},
       phase: lastStatusPayload?.phase || {
-        current: 'Phase 3: Session Bridge Adapter MVP',
-        next: 'Phase 4: New and switch actions with confirmation gates'
+        current: 'Phase 4: New and switch actions with confirmation gates',
+        next: 'Phase 5: Page Context Dock'
       }
     });
   }
+  lastSessionsPayload = payload;
   renderSessions(payload);
+}
+
+async function requestNewSession() {
+  if (!canRunNewSession()) {
+    renderOperation({
+      state: 'failed',
+      action: 'new',
+      error: '当前状态不可新开对话'
+    });
+    return;
+  }
+  if (!window.confirm('确认新开 OpenClaw 对话？后续消息会进入新的会话代际。')) {
+    return;
+  }
+
+  await runSessionAction({
+    type: 'sidePanel.sessions.new',
+    action: 'new'
+  });
+}
+
+async function requestSwitchSession() {
+  if (!selectedSessionId || !selectedSession || selectedSession.restorable === false) {
+    renderOperation({
+      state: 'failed',
+      action: 'switch',
+      error: '请选择一个可切换的会话'
+    });
+    return;
+  }
+  if (!window.confirm(`确认切换到「${sessionTitle(selectedSession)}」？`)) {
+    return;
+  }
+
+  await runSessionAction({
+    type: 'sidePanel.sessions.switch',
+    action: 'switch',
+    sessionId: selectedSessionId
+  });
+}
+
+async function runSessionAction(message) {
+  setActionLoading(true);
+  renderOperation({
+    state: 'running',
+    action: message.action,
+    result: { operationStatus: 'pending' }
+  });
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: message.type,
+      sessionId: message.sessionId,
+      messageCardStyle: 'friendly'
+    });
+    const payload = response?.payload || {};
+    renderOperation(payload);
+    if (payload.confirmed) {
+      await refreshStatus();
+    } else {
+      updateActionButtons(lastSessionsPayload || {});
+    }
+  } catch (error) {
+    renderOperation({
+      state: 'failed',
+      action: message.action,
+      error: error.message
+    });
+  } finally {
+    setActionLoading(false);
+  }
 }
 
 async function requestBridgePermission() {
@@ -193,10 +269,9 @@ function renderStatus(payload) {
   elements.routeValue.textContent = scope.route_key || 'browser:default';
   elements.deviceValue.textContent = shortId(scope.device_id || connection.hostId || '');
   elements.actionHint.textContent = actionHint(payload);
-  elements.phaseValue.textContent = payload.phase?.current || 'Phase 3';
-  elements.nextStep.textContent = payload.phase?.next || '下一步接入 new/switch confirmation gates。';
-  elements.newSession.disabled = true;
-  elements.switchSession.disabled = true;
+  elements.phaseValue.textContent = payload.phase?.current || 'Phase 4';
+  elements.nextStep.textContent = payload.phase?.next || '下一步接入 Page Context Dock。';
+  updateActionButtons(lastSessionsPayload || {});
   elements.bridgePermission.hidden = state !== 'bridge_permission_required' || !currentBridgePermissionOrigin;
   elements.diagnosticsOutput.textContent = diagnosticsText(payload);
 }
@@ -211,6 +286,8 @@ function renderSessions(payload) {
     elements.sessionsEmpty.hidden = false;
     elements.sessionsEmpty.textContent = sessionsEmptyText(state, payload.error);
     selectedSessionId = '';
+    selectedSession = null;
+    updateActionButtons(payload);
     return;
   }
 
@@ -218,6 +295,7 @@ function renderSessions(payload) {
   if (!sessions.some((session) => sessionIdentity(session) === selectedSessionId)) {
     selectedSessionId = currentId || sessions[0].session_id || sessions[0].session_key || '';
   }
+  selectedSession = sessions.find((session) => sessionIdentity(session) === selectedSessionId) || null;
 
   for (const session of sessions) {
     const item = document.createElement('li');
@@ -231,6 +309,7 @@ function renderSessions(payload) {
     button.title = sessionTitle(session);
     button.addEventListener('click', () => {
       selectedSessionId = id;
+      selectedSession = session;
       renderSessions({ ...payload, sessions });
     });
     button.appendChild(sessionTitleRow(session, isCurrent));
@@ -240,6 +319,7 @@ function renderSessions(payload) {
     item.appendChild(button);
     elements.sessionsList.appendChild(item);
   }
+  updateActionButtons(payload);
 }
 
 function sessionTitleRow(session, isCurrent) {
@@ -311,6 +391,78 @@ function renderError(message) {
 
 function setLoading(loading) {
   elements.refresh.disabled = loading;
+}
+
+function setActionLoading(loading) {
+  elements.newSession.disabled = loading || !canRunNewSession();
+  elements.switchSession.disabled = loading || !canRunSwitchSession();
+}
+
+function updateActionButtons(payload) {
+  lastSessionsPayload = payload;
+  elements.newSession.disabled = !canRunNewSession(payload);
+  elements.switchSession.disabled = !canRunSwitchSession(payload);
+}
+
+function canRunNewSession(payload = lastSessionsPayload || {}) {
+  const state = payload.state || lastStatusPayload?.state;
+  return state === 'ready' || state === 'empty_sessions';
+}
+
+function canRunSwitchSession(payload = lastSessionsPayload || {}) {
+  const state = payload.state || lastStatusPayload?.state;
+  return state === 'ready' && Boolean(selectedSessionId) && selectedSession?.restorable !== false;
+}
+
+function renderOperation(payload) {
+  const action = payload.action || payload.result?.action || 'action';
+  const result = payload.result || {};
+  const confirmed = payload.confirmed === true || result.confirmed === true;
+  const failed = payload.state === 'failed' || payload.error;
+  const unconfirmed = payload.state === 'action_unconfirmed' || (result.operationStatus && !confirmed);
+  const state = failed ? 'failed' : confirmed ? 'confirmed' : unconfirmed ? 'unconfirmed' : 'running';
+  const title = operationTitle(action, state);
+  const detail = operationDetail(payload, result, state);
+
+  elements.operationResult.hidden = false;
+  elements.operationResult.dataset.state = state;
+  elements.operationResult.replaceChildren();
+
+  const titleNode = document.createElement('strong');
+  titleNode.textContent = title;
+  const detailNode = document.createElement('span');
+  detailNode.textContent = detail;
+  elements.operationResult.appendChild(titleNode);
+  elements.operationResult.appendChild(detailNode);
+
+  if (result.messageCard?.text) {
+    const cardNode = document.createElement('span');
+    cardNode.textContent = result.messageCard.text;
+    elements.operationResult.appendChild(cardNode);
+  }
+}
+
+function operationTitle(action, state) {
+  const actionName = action === 'new' ? '新开对话' : action === 'switch' ? '切换会话' : '会话动作';
+  const stateName = {
+    confirmed: '已确认',
+    unconfirmed: '未确认',
+    failed: '失败',
+    running: '执行中'
+  }[state] || '执行中';
+  return `${actionName}：${stateName}`;
+}
+
+function operationDetail(payload, result, state) {
+  if (payload.error) {
+    return redactText(payload.error);
+  }
+  const parts = [
+    result.operationStatus || payload.state || state,
+    result.deliveryStatus ? `delivery: ${result.deliveryStatus}` : '',
+    result.operationWarning ? redactText(result.operationWarning) : ''
+  ].filter(Boolean);
+  return parts.join(' · ') || '等待 Session Bridge 返回确认';
 }
 
 function stateLabel(state) {
@@ -402,7 +554,7 @@ function bridgeLabel(bridge) {
 
 function actionHint(payload) {
   if (payload.state === 'ready') {
-    return 'Session Bridge 已接入，new/switch 动作会在 Phase 4 启用';
+    return 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
   }
   if (payload.state === 'bridge_permission_required') {
     return '点击授权按钮后才会访问 Bridge 地址';
@@ -414,7 +566,7 @@ function actionHint(payload) {
     return '当前 scope 没有被 Bridge 解析为可访问会话';
   }
   if (payload.state === 'empty_sessions') {
-    return '当前 scope 暂无历史会话';
+    return '当前 scope 暂无历史会话，可新开对话';
   }
   if (payload.state === 'missing_config') {
     return bridgeConfigHint(payload.bridge || {});

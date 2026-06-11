@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 3 - Session Bridge Adapter MVP 已实现并通过 adapter/视觉 smoke，等待本地提交确认与 Phase 4 new/switch actions。
+当前阶段：Phase 4 - New/Switch actions 已实现并通过 action adapter/视觉 smoke，等待完整 gate、Linear 同步与本地提交确认。
 
 ## 已完成
 
@@ -27,7 +27,9 @@
 - [x] 完成 rose-skill 审核修复：trusted pairing、Bridge URL+token gate、Options 配置入口、popup 显式打开入口、Phase 文案同步。
 - [x] 完成 Chrome for Testing unpacked extension smoke：扩展加载、Side Panel 页面渲染、Popup 打开入口、Options Bridge 配置项。
 - [x] 推进 Phase 3：Session Bridge Adapter MVP。
-- [ ] 本地提交 Phase 3 adapter/UI/harness 变更。
+- [x] 本地提交 Phase 3 adapter/UI/harness 变更：`e01e902 Add side panel session bridge adapter`。
+- [x] 推进 Phase 4：New/Switch actions with confirmation gates。
+- [ ] 本地提交 Phase 4 action/UI/harness 变更。
 
 ## Linear 树
 
@@ -59,7 +61,7 @@
 - [x] side panel ready gate 基于 trusted paired + online + Bridge URL/token fully configured。
 - [x] Options 页提供 Side Panel / Session Bridge 配置入口。
 - [x] 将 `sidePanel.sessions.list` 从占位推进到 Session Bridge adapter。
-- [ ] 将 `sidePanel.sessions.new` / `sidePanel.sessions.switch` 推进到 Phase 4 confirmation-gated actions。
+- [x] 将 `sidePanel.sessions.new` / `sidePanel.sessions.switch` 推进到 Phase 4 confirmation-gated actions。
 
 ## Phase 3 实现草案
 
@@ -70,6 +72,16 @@
 - [x] Side Panel UI 提供用户手势触发的 Bridge host permission 授权入口。
 - [x] Side Panel UI 渲染 adapter 返回的 scoped sessions，不合成全局/最近/模糊会话。
 - [x] Phase 3 仍禁用 new/switch，保留 Phase 4 confirmation gate。
+
+## Phase 4 实现草案
+
+- [x] `newConversation(scope, options)` 调用 `POST /v1/sessions/new`，payload 不发送 `session_id`。
+- [x] `switchSession(scope, sessionId, options)` 调用 `POST /v1/switch-session`，缺少 `session_id` 时 fail closed。
+- [x] Side Panel UI 对 new/switch 均做二次确认。
+- [x] 新开完成态只看 `new_conversation_confirmed=true`。
+- [x] 切换完成态只看 `route_switch_confirmed=true`。
+- [x] delivery 状态与 route/session confirmation 分开展示。
+- [x] 未确认结果不刷新 current session 标记。
 
 ## 本轮验证
 
@@ -92,6 +104,8 @@
 - [x] `node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"`
 - [x] Chrome for Testing adapter smoke：缺 host permission 不发请求；授权后 `/health`、`/v1/bridge`、`/v1/sessions` 路径和 Bearer header 正常；公开 payload 不含 token。
 - [x] Chrome for Testing visual smoke：390px 侧栏宽度下 scoped sessions、长 route key、长 session key 不重叠。
+- [x] Chrome for Testing action adapter smoke：new payload 不含 `session_id`；switch 缺 `session_id` 拒绝；switch payload 必含目标 `session_id`；confirmed gate 正常；公开 payload 不含 token。
+- [x] Chrome for Testing action visual smoke：390px 侧栏宽度下二次确认后操作结果、未确认态、delivery 状态和 message card preview 不重叠。
 
 ## 待确认
 
@@ -100,4 +114,5 @@
 - [x] Session Bridge token 走现有 Options 页的 Side Panel / Session Bridge 配置区，UI/diagnostics 只显示已配置状态。
 - [x] 本轮执行记录已同步到 Linear `AIC-2913` / `AIC-2914` 评论。
 - [x] 本轮 Phase 3 执行记录同步到 Linear `AIC-2915` 评论。
+- [x] 本轮 Phase 4 执行记录同步到 Linear `AIC-2916` 评论。
 - [ ] 是否批量更新 Linear issue 状态。
