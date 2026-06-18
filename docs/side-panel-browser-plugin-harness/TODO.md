@@ -71,6 +71,7 @@
 - [x] Phase 8 Bridge Registry schema：新增 `13-bridge-registry-schema.md`，拆清 instance、relationship、bridge、secret、binding、health snapshot。
 - [x] Phase 8 Device Onboarding checklist：新增 `14-device-onboarding-checklist.md`，整理设备安装、Tailscale、smoke、registry、回滚。
 - [x] Phase 8 Multi-bridge health readiness：新增 `15-multi-bridge-health-readiness.md`，定义 health 聚合、readiness gate、UI 映射和告警。
+- [x] 当前工作现场 handoff：新增 `16-handoff-2026-06-18.md`，记录 commits、验证、未完成决策和禁止回退项。
 
 ## Linear 树
 
