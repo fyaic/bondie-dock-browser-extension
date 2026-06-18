@@ -48,6 +48,7 @@
 - [x] Tailscale/private network 只表示 control plane 到 bridge 可达，不表示用户有 session 权限。
 - [x] `sidePanel.sessions.list({ instanceId })` 不会把未知 instance 回退到 legacy 全量 sessions。
 - [x] fixture instance actions 返回 `fixture_read_only`，不触发真实 Bridge。
+- [x] `sidePanelIdentityMode=oauth` 时未接入 OAuth adapter 前返回 `identity_required`，不列 sessions/instances。
 
 ## 安全检查
 
@@ -116,4 +117,5 @@ test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/
 - [x] Chrome for Testing official Bridge gate renders 26 real sessions with no horizontal overflow.
 - [x] Phase 7A fixtures render Bondie A/B/C with correct visibility badges and disabled actions.
 - [x] Phase 7B message contract smoke covers legacy instance, unknown instance, fixture instance filter, and fixture action gate.
+- [x] Phase 7B identity gate smoke covers legacy-paired happy path and oauth fail-closed path.
 - [ ] Real Google Chrome host permission gate approved and Side Panel renders latest local unpacked build in UI.

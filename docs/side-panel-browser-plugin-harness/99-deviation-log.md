@@ -17,6 +17,9 @@
 - 偏差：Phase 7A 虽然 UI 有实例切换器，但 background message 仍是隐式单 Bridge contract，后续 new/switch 容易继续依赖全局 legacy scope。
   - 处理：Phase 7B 给 `sidePanel.sessions.list/new/switch` 增加 `instanceId`；legacy mode 对未知 instance 返回 `instance_unavailable`，fixture action 返回 `fixture_read_only`，UI 执行动作时携带当前可操作 instance id。
 
+- 偏差：如果继续默认用 device pairing 构造 viewer，开发者可能误把设备配对当成生产用户身份。
+  - 处理：新增 `sidePanelIdentityMode`。默认 `legacy-paired` 只保留 direct Bridge 兼容路径；切换到 `oauth` 后，在真实 OAuth adapter 未接入前返回 `identity_required`，不列 sessions/instances，也不请求 Session Bridge。
+
 ## 2026-06-17
 
 - 偏差：新需求从 OpenClaw 单实例升级为 Bondie 多实例，但分支仍停留在 `feature/openclaw-browser-side-panel-plugin`。

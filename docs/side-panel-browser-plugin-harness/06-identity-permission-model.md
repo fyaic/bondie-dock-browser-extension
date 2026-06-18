@@ -159,6 +159,18 @@ POST /v1/agent-instances/{instance_id}/switch-session
 
 当前 Phase 6 已经完成单 Bridge / 单 scope 的 Side Panel MVP 骨架和真实 Bridge smoke。新权限模型应作为下一阶段主线进入，不直接推翻已完成代码。
 
+## 2026-06-18 Phase 7B 执行状态
+
+已落地最小身份 gate：
+
+- 新增 `sidePanelIdentityMode`。
+- 默认 `legacy-paired` 保留 direct Session Bridge 兼容路径，只用于开发/过渡场景。
+- `oauth` 模式在 OAuth adapter 未接入前返回 `identity_required`。
+- OAuth 模式下不列 sessions、不返回 instances、不请求 Session Bridge。
+- Side Panel diagnostics 只展示 `identity_mode`、`identity_authenticated`、`identity_reason`，不展示 token。
+
+该实现不是生产 OAuth；它的作用是防止把 device pairing 误当作用户身份，并为后续 OAuth/control plane adapter 留出明确边界。
+
 下一阶段建议：
 
 1. 在 Side Panel 状态中加入 `identity_required` 和 `permission_unresolved`。

@@ -207,12 +207,26 @@ export const openClawSidePanelModule = {
   sessionBridgeBaseUrl: '',
   sessionBridgeToken: '',
   sessionBridgeTimeoutMs: 20000,
+  sidePanelIdentityMode: 'legacy-paired',
   sidePanelWorkspaceId: 'default',
   sidePanelRouteKey: 'browser:default',
   sidePanelOAuthProvider: '',
   sidePanelSelectedInstanceId: ''
 }
 ```
+
+`sidePanelIdentityMode`：
+
+| 值 | 用途 | 权限语义 |
+|---|---|---|
+| `legacy-paired` | 当前 direct Session Bridge 兼容路径 | 设备配对作为临时 viewer，只用于 legacy/dev mode |
+| `oauth` | 生产用户身份路径 | 未接入 OAuth adapter 前必须返回 `identity_required`，不列 sessions |
+
+Phase 7B 当前实现：
+
+- 默认 `legacy-paired` 不破坏现有真实 Bridge smoke。
+- 切换到 `oauth` 后，`sidePanel.status`、`sidePanel.identity.status`、`sidePanel.sessions.list` 均 fail closed。
+- OAuth mode 不请求 Session Bridge，不把 device pairing 伪装成用户身份。
 
 密钥处理：
 

@@ -213,6 +213,7 @@ Phase 7B 已完成扩展消息层的最小 contract：
 - legacy direct Bridge 只允许空 instance 或 `legacy-session-bridge`；未知 instance 返回 `instance_unavailable`。
 - fixture `new/switch({ instanceId })` 返回 `fixture_read_only`，不调用真实 Bridge。
 - Side Panel UI 执行 new/switch 时会带上当前可操作 instance id。
+- `sidePanelIdentityMode` 已落地：默认 `legacy-paired` 保留真实 Bridge 路径，`oauth` 模式在 OAuth adapter 未接入前返回 `identity_required`，不列 sessions/instances。
 
 ### Phase 7A: Fixture UI
 
