@@ -82,6 +82,27 @@ assert.equal(degradedInstancesPayload.instances[0].actions_enabled, false);
 assert.equal(degradedInstancesPayload.instances[0].health.state, 'sessions_degraded');
 assert.equal(degradedInstancesPayload.instances[0].health.sessions_ready, false);
 
+const staleInstancesPayload = normalizeControlPlaneInstancesPayload({
+  instances: [
+    {
+      instance_id: 'bondie-stale',
+      display_name: 'Bondie Stale',
+      relationship_type: 'subordinate',
+      visibility_policy: 'all_sessions',
+      status: 'online',
+      health: {
+        state: 'online',
+        checked_at: '2026-06-18T07:00:00Z',
+        stale: true,
+        sessions_ready: true
+      }
+    }
+  ]
+});
+assert.equal(staleInstancesPayload.instances.length, 1);
+assert.equal(staleInstancesPayload.instances[0].health.stale, true);
+assert.equal(staleInstancesPayload.instances[0].actions_enabled, false);
+
 assert.equal(
   CONTROL_PLANE_ENDPOINTS.instanceSessions('bondie/b'),
   '/v1/bondie-instances/bondie%2Fb/sessions'
@@ -226,6 +247,25 @@ assert.equal(adapterNewResult.result.confirmed, true);
 assert.equal(calls.length, 4);
 assert.ok(calls.every((call) => call.options.headers.Authorization === 'Bearer redacted-token'));
 assert.ok(calls.every((call) => call.url.startsWith('https://bondie.example.com/api/v1/')));
+
+const beforeDisabledActionCalls = calls.length;
+const disabledActionResult = await adapter.newConversation({
+  ...adapterInstances.instances[1],
+  actions_enabled: false
+});
+assert.equal(disabledActionResult.state, 'instance_action_unavailable');
+assert.equal(calls.length, beforeDisabledActionCalls);
+
+const unauthorizedAdapter = new BondieControlPlaneAdapter({
+  config: {
+    sidePanelControlPlaneBaseUrl: 'https://bondie.example.com/api'
+  },
+  accessToken: 'redacted-token',
+  fetchImpl: async () => jsonResponse({}, 401)
+});
+const unauthorizedInstances = await unauthorizedAdapter.listInstances();
+assert.equal(unauthorizedInstances.state, 'control_plane_http_error');
+assert.equal(unauthorizedInstances.controlPlane.baseUrlConfigured, true);
 
 const pairedButNoOAuthContext = createModuleContext({
   sidePanelIdentityMode: 'oauth',

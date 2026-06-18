@@ -175,6 +175,7 @@ adapter readiness 规则：
 - instance `actions_enabled=false`：new/switch 返回 `instance_action_unavailable`。
 - instance health 摘要会保留 `state`、`checked_at`、`stale`、`latency_ms`、`sessions_ready`，但不包含 endpoint/token/debug raw。
 - 未显式设置 `actions_enabled=true` 时，只有 `status=online/ready` 的实例默认允许 action；`degraded/offline` 默认禁用。
+- `health.stale=true` 时默认禁用 action，不能把过期健康状态当成 online。
 
 规范化后的 session 会补充：
 

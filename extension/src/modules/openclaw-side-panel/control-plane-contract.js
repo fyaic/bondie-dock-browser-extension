@@ -115,7 +115,7 @@ export function normalizeControlPlaneInstance(instance) {
 
   const health = normalizeHealth(instance.health);
   const status = cleanString(instance.status || health?.state || instance.bridge_status) || 'unknown';
-  const actionsEnabled = resolveActionsEnabled(instance, status);
+  const actionsEnabled = resolveActionsEnabled(instance, status, health);
 
   return {
     instance_id: instanceId,
@@ -285,11 +285,14 @@ function normalizeHealth(health) {
   };
 }
 
-function resolveActionsEnabled(instance, status) {
+function resolveActionsEnabled(instance, status, health) {
   if (instance.actions_enabled === true) {
     return true;
   }
   if (instance.actions_enabled === false) {
+    return false;
+  }
+  if (health?.stale) {
     return false;
   }
   return instance.can_switch_session !== false
