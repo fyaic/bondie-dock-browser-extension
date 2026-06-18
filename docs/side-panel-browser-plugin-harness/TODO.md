@@ -173,7 +173,7 @@
 - [x] 设计 production control-plane instance API：`list/new/switch({ instanceId })`。
 - [x] 新增 Control Plane contract helper：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer。
 - [x] 新增 Control Plane adapter skeleton：缺 URL/缺 token 不发请求，fake fetch 可验证生产 endpoint 和 confirmation gate。
-- [ ] 增加 fail-closed tests：未 OAuth、仅 pairing、无 relationship、沟通关系越权。
+- [x] 增加 fail-closed tests：未 OAuth、仅 pairing、无 relationship、沟通关系越权。
 
 ## Phase 8 Bondie 设备 Bridge 与标准分发草案
 

@@ -49,6 +49,10 @@ const instancesPayload = normalizeControlPlaneInstancesPayload({
       visibility_policy: 'all_sessions'
     },
     {
+      instance_id: 'no-relationship',
+      visibility_policy: 'participant_sessions'
+    },
+    {
       instance_id: 'missing-policy',
       relationship_type: 'subordinate'
     }
