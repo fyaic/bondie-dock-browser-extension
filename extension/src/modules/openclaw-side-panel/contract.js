@@ -3,6 +3,7 @@ export function buildSessionBridgeQuery(scope) {
   const routeKey = cleanString(scope.route_key);
   const routeType = cleanString(scope.route_type) || 'browser';
   const workspaceId = cleanString(scope.workspace_id) || 'default';
+  const organization = cleanString(scope.organization) || workspaceId;
   const routeLabel = cleanString(scope.route_label) || 'Browser';
 
   return compactObject({
@@ -10,7 +11,7 @@ export function buildSessionBridgeQuery(scope) {
     external_user_id: routeKey,
     conversation_key: routeKey,
     account_id: workspaceId,
-    organization: workspaceId,
+    organization,
     chat_type: routeType,
     chat_label: routeLabel,
     operator_display_name: operatorId,

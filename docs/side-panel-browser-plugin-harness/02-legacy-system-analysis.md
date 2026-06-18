@@ -110,6 +110,8 @@ B 负责：
 - `chat_label` 由企业微信 alias/name 重建。
 - OpenClaw/Y-side WeCom 状态卡片作为唯一可见确认。
 
+注意：移除 WeCom OAuth 不等于不需要 OAuth。浏览器插件脱离企业微信后，仍需要 OpenClaw/AIC OAuth 或等价身份体系识别当前用户，用于从属关系和沟通关系的数据隔离。device pairing 只能证明设备连接关系，不能替代用户身份。
+
 ## 可复用接口形态
 
 旧 B API 可作为第一阶段 adapter 目标：
@@ -139,6 +141,15 @@ POST /v1/signals
 | `chat_label` | route label | 仅显示，不作为唯一授权 |
 | WeCom message card | Side Panel operation result / OpenClaw event | 不依赖 WeCom send |
 
+新权限模型额外需要：
+
+| 新概念 | 说明 |
+|---|---|
+| OAuth user identity | 当前浏览器用户，决定能访问哪些班底实例 |
+| agent instance / bandit instance | 一个 OpenClaw/班底服务实例 |
+| relationship_type | `subordinate` 或 `communication` |
+| visibility_policy | `all_sessions` 或 `participant_sessions` |
+
 ## 旧测试给新测试的启发
 
 新主线需要 contract tests 覆盖：
@@ -150,4 +161,3 @@ POST /v1/signals
 - unconfirmed response 不显示“已完成”。
 - current session 标记以 `session_id` 为准，不能只用 `session_key`。
 - debug/raw session 只在开发诊断里可见，不出现在普通 UI。
-

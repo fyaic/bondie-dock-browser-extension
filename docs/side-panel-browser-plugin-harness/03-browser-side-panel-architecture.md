@@ -9,6 +9,7 @@ Browser Extension
 │   ├── background service worker
 │   ├── OpenClaw node-compatible transport
 │   ├── device identity / pairing / deviceToken
+│   ├── OAuth user identity state
 │   ├── storage and settings
 │   ├── capability dispatcher
 │   └── feature module registry
@@ -19,6 +20,7 @@ Browser Extension
 │   ├── media-to-notes script plugin
 │   └── openclaw-side-panel UI module
 └── adapters
+    ├── identity / permission adapter
     ├── session bridge HTTP adapter
     ├── OpenClaw Gateway adapter
     └── future native messaging adapter
@@ -29,10 +31,12 @@ Browser Extension
 ```text
 User opens browser side panel
   -> sidepanel.js requests sidePanel.status
-  -> background reads pairing/config/bridge status
-  -> sidepanel.js requests sidePanel.sessions.list
-  -> background session adapter calls bridge/Gateway
-  -> sidepanel renders scoped sessions
+  -> background reads pairing/config/OAuth/bridge status
+  -> sidepanel.js requests identity and permitted instances
+  -> background permission adapter resolves subordinate/communication relationships
+  -> sidepanel.js requests sidePanel.sessions.list for selected instance
+  -> background session adapter calls bridge/Gateway with allowed visibility
+  -> sidepanel renders authorized sessions
   -> user confirms new/switch
   -> sidepanel sends sidePanel.sessions.new or sidePanel.sessions.switch
   -> background adapter executes action
@@ -85,6 +89,8 @@ Side Panel 适合长停留：
 
 - extension 持久化 device identity。
 - OpenClaw Gateway pairing/deviceToken。
+- OAuth 或等价身份服务返回的 user identity。
+- 服务端权限控制面返回的 relationship / visibility policy。
 - background service worker 中的配置。
 - Session Bridge / OpenClaw Gateway 返回的 scoped sessions 和 confirmed result。
 
@@ -95,6 +101,8 @@ Side Panel 适合长停留：
 - side panel UI 自己传入的 route label。
 - content script 采集的正文。
 - 用户手填的 display label。
+
+注意：device pairing 只证明浏览器设备可以连接控制面，不证明当前用户是谁。session 可见性必须由 OAuth user identity 和服务端权限判定。
 
 ## Session Scope 模型
 
@@ -116,6 +124,36 @@ Side Panel 适合长停留：
 
 如果调用旧 Session Bridge，可由 adapter 映射为旧字段。映射必须是显式且可测试的，不让 UI 直接拼旧字段。
 
+## Identity and Permission 模型
+
+浏览器插件需要支持用户视角的多班底实例：
+
+```text
+viewer user
+  -> permitted agent instances
+    -> relationship type
+      -> allowed session visibility
+```
+
+关系类型：
+
+| relationship_type | 产品语义 | session 可见性 |
+|---|---|---|
+| `subordinate` | 从属关系，个人私助或强绑定班底 | `all_sessions`，可看该实例全部会话 |
+| `communication` | 沟通关系，团队共享或他人分享班底 | `participant_sessions`，只看当前用户相关会话 |
+
+Side Panel UI 必须按实例分组或提供实例切换。不能把多个实例的 sessions 拉平成没有来源的列表。
+
+建议状态：
+
+```text
+identity_required
+permission_unresolved
+instance_empty
+```
+
+这些状态都必须 fail closed，不得退回全局 session 搜索。
+
 ## Adapter 策略
 
 ### Phase 1: Session Bridge HTTP Adapter
@@ -130,6 +168,20 @@ Side Panel 适合长停留：
 
 - 旧 B API 命名偏 WeCom，需要 adapter 隔离。
 - 本地/远程 bridge URL 和 token 配置需要产品化。
+- 旧 B API 偏单 scope，不能完整表达“用户 -> 多实例 -> 关系权限”的新模型，只能作为兼容路径。
+
+### Phase 1.5: Permission-aware Control Plane
+
+用途：
+
+- 通过 OAuth user identity 获取用户可访问的班底实例。
+- 返回每个实例的 relationship type 和 visibility policy。
+- 将 subordinate / communication 的 session 可见性判定放在服务端，而不是浏览器 UI。
+
+风险：
+
+- 需要明确 OAuth provider 和权限服务归属。
+- 需要与 OpenClaw Gateway / Session Bridge 的 instance id、route scope 和 session id 对齐。
 
 ### Phase 2: OpenClaw Gateway Adapter
 
@@ -151,6 +203,8 @@ Side Panel 适合长停留：
 
 ```text
 booting
+  -> identity_required
+  -> permission_unresolved
   -> unpaired
   -> offline
   -> bridge_unavailable
@@ -183,4 +237,3 @@ Safari：
 
 - 不进入第一阶段实现。
 - 后续单独评估 extension manifest、background 生命周期、侧栏/弹窗替代形态和分发流程。
-

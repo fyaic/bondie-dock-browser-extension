@@ -4,13 +4,16 @@
 
 ## 任务身份
 
-本目录是 `feature/openclaw-browser-side-panel-plugin` 分支的新主线 harness。目标是在当前浏览器插件基础上规划并推进 OpenClaw Side Panel 能力，脱离企业微信自建应用环境，形成可拆卸的浏览器插件内模块。
+本目录是 `feature/bondie-multi-instance-permissions` 分支的新主线 harness。目标是在当前浏览器插件基础上规划并推进 Bondie/OpenClaw Side Panel 能力，脱离企业微信自建应用环境，形成可拆卸的浏览器插件内模块。
 
 ## 深层目标
 
-把旧的企业微信 Side Panel session 控制体验迁移到浏览器插件：
+把旧的企业微信 Side Panel session 控制体验迁移到浏览器插件，并升级为 Bondie 多实例用户视角：
 
 - 用户在浏览器侧获得类似主流 AI 对话软件的会话列表、当前会话、新建会话、切换会话能力。
+- 浏览器插件是用户视角，不是设备视角；同一用户可以访问多个 Bondie/OpenClaw 实例，例如 Bondie A/B/C。
+- 权限必须区分从属关系和沟通关系：从属关系可看该实例全部 sessions，沟通关系只看当前用户相关 sessions。
+- 脱离企业微信后仍需要 OpenClaw/AIC OAuth 或等价身份体系识别用户；device pairing 不能替代 user identity。
 - OpenClaw session mutation 仍由可信 OpenClaw/Session Bridge 控制面执行，浏览器 UI 只表达用户意图和展示确认状态。
 - Side Panel 能作为可安装、可禁用、可替换的 extension module，而不是与 popup、page intelligence、pattern memory 硬耦合。
 - 后续可扩展到 Edge；Safari 需要单独适配评估，不进入第一阶段硬承诺。
@@ -19,7 +22,7 @@
 
 ```text
 repo: /Users/fuyo-aic/Projects/openclaw-browser-host-extension
-branch: feature/openclaw-browser-side-panel-plugin
+branch: feature/bondie-multi-instance-permissions
 github: https://github.com/fyaic/openclaw-browser-host-extension.git
 ```
 
@@ -36,6 +39,8 @@ github: https://github.com/fyaic/openclaw-browser-host-extension.git
 - 旧 B 侧 `openclaw-session-bridge` 负责 OpenClaw route/session 解析、授权过滤、switch/new、Gateway read-back confirmation。
 - 可复用的是 B 的 session API 语义、confirmation 规则、route/generation 边界。
 - 必须替换的是 WeCom OAuth、JS-SDK、企业可信域名、客户联系/上下游入口、panel_token、WeCom operator 重建逻辑。
+- 替换 WeCom OAuth 不等于取消 OAuth；浏览器插件需要新的用户身份和权限控制面。
+- B 侧已有单设备标准分发和 multi-bridge readiness 文档；Bondie 多实例需要新增 control plane / registry，而不是让 extension 保存每台设备 token。
 
 ## 预授权决策
 
@@ -46,7 +51,10 @@ github: https://github.com/fyaic/openclaw-browser-host-extension.git
 - Safari 不阻塞 MVP，只写适配差异和后续评估。
 - UI 模块采用“插件的插件”形式：extension core 提供 transport/storage/capability host，`openclaw-side-panel` 作为内置 feature module 注册。
 - Session Bridge 先复用 HTTP contract，后续再评估是否直接走 OpenClaw Gateway 或 Native Messaging。
+- Bondie 多实例默认不让浏览器直连所有设备 bridge；优先走 OAuth control plane，再由服务端通过 Tailscale/private network 调各设备 bridge。
 - 浏览器页面、DOM、active tab payload 都不作为 session 授权源；session 授权必须来自 pairing/device identity、用户选择的 workspace/scope、bridge/OpenClaw read-back。
+- 用户身份必须来自 OAuth 或等价身份服务；device identity / pairing 只证明设备连接关系。
+- 下一阶段必须支持 permitted instances：从属关系 `subordinate/all_sessions`，沟通关系 `communication/participant_sessions`。
 - `new-session` 仍是 route-level action，不发送 `session_id`。
 - `switch-session` 仍是 generation-level action，必须携带目标 `session_id` 或等价 generation id。
 - UI 完成态必须看 `new_conversation_confirmed=true` 或 `route_switch_confirmed=true`，不能只看 HTTP 200。
@@ -60,6 +68,7 @@ github: https://github.com/fyaic/openclaw-browser-host-extension.git
 - Side Panel 产品名称、品牌表达和是否从 Browser Host 改名。
 - Safari 是否进入同一期交付。
 - 需要外部生产环境 token、真实用户数据、真实 OpenClaw route 写操作时。
+- OAuth provider、班底实例 registry 和从属关系授予来源尚未确定时。
 
 ## 跳过并继续规则
 
@@ -75,7 +84,11 @@ github: https://github.com/fyaic/openclaw-browser-host-extension.git
 3. 读 `02-legacy-system-analysis.md` 理解旧 A/B 边界。
 4. 读 `03-browser-side-panel-architecture.md` 获取新架构。
 5. 读 `04-plugin-module-contract.md` 获取“插件的插件”接口。
-6. 按 `05-implementation-sequence.md` 推进实现。
-7. 每次提交前跑 `10-self-checklist.md`。
-8. 更新 `TODO.md` 和 `99-deviation-log.md`。
-
+6. 读 `06-identity-permission-model.md` 获取最新用户视角权限模型。
+7. 读 `07-bondie-multi-instance-product-architecture.md` 获取 Bondie ABC 产品和 UI 方案。
+8. 读 `08-bondie-device-bridge-distribution.md` 获取多设备 bridge 和标准分发方案。
+9. 读 `09-bondie-multi-instance-prd.md` 获取 PRD、阶段计划和验收标准。
+10. 修 B 侧 504 前读 `11-session-bridge-fix-runbook.md`。
+11. 按 `05-implementation-sequence.md` 推进实现。
+12. 每次提交前跑 `10-self-checklist.md`。
+13. 更新 `TODO.md` 和 `99-deviation-log.md`。

@@ -12,13 +12,18 @@
 | `03-browser-side-panel-architecture.md` | 新浏览器插件 side panel 架构、数据流、信任边界 |
 | `04-plugin-module-contract.md` | “插件的插件”模块契约、manifest、background API |
 | `05-implementation-sequence.md` | 分阶段实施计划、测试 gate、风险处理 |
+| `06-identity-permission-model.md` | 用户视角、多班底实例、从属/沟通关系和 OAuth 权限模型 |
+| `07-bondie-multi-instance-product-architecture.md` | Bondie ABC 多实例 Side Panel 产品、权限和 UI 架构 |
+| `08-bondie-device-bridge-distribution.md` | 多设备 bridge、Tailscale、registry 和标准分发规划 |
+| `09-bondie-multi-instance-prd.md` | Bondie 多实例 Side Panel PRD、阶段计划和验收标准 |
 | `10-self-checklist.md` | 执行者自检清单 |
+| `11-session-bridge-fix-runbook.md` | Session Bridge 504 修复、回退、验证 runbook |
 | `TODO.md` | 动态任务状态 |
 | `99-deviation-log.md` | 偏差、阻塞和已跳过事项 |
 
 ## 一句话方案
 
-在当前 Browser Host Extension 内新增可拆卸的 `openclaw-side-panel` feature module：它用 Chrome/Edge Side Panel 展示 OpenClaw 会话控制 UI，通过 background 的 session adapter 调本地/远程 Session Bridge 或 OpenClaw Gateway，严格复用旧 B 侧的 scoped session、route-level new、generation-level switch 和 confirmation 语义。
+在当前 Browser Host Extension 内新增可拆卸的 `openclaw-side-panel` feature module：它用 Chrome/Edge Side Panel 展示用户有权限访问的 Bondie/OpenClaw 实例和会话控制 UI，通过 background 的 identity、permission 和 session adapters 调本地/远程控制面，严格复用旧 B 侧的 scoped session、route-level new、generation-level switch 和 confirmation 语义，并在下一阶段扩展为 Bondie 多实例、从属/沟通关系权限模型。
 
 ## 新旧链路对比
 
@@ -37,6 +42,7 @@ WeCom Side Panel
 ```text
 Browser Side Panel UI
   -> extension background / side-panel module host
+  -> OAuth user identity / permission resolver
   -> session adapter
   -> local or private Session Bridge, or OpenClaw Gateway
   -> OpenClaw
@@ -45,6 +51,9 @@ Browser Side Panel UI
 ## 关键原则
 
 - 不把 WeCom 的身份模型照搬到浏览器。
+- 不把“登录账号隔离”误当成完整权限模型；浏览器插件是用户视角，必须支持一个用户访问多个班底实例。
+- 不用 device pairing 替代 OAuth 用户身份；pairing 证明设备，OAuth 证明用户。
+- 区分从属关系和沟通关系：从属关系可看全部 sessions，沟通关系只看与当前用户相关的 sessions。
 - 不让网页 DOM、URL 或用户手填 label 直接决定 session 授权。
 - 不为了未来 Agent 过早抽象；先 OpenClaw first。
 - 不把 Side Panel 做成 popup 的一个大分支；它应是可启用/禁用的模块。
@@ -75,4 +84,4 @@ Side Panel 新主线应新增第二类插件形态：extension UI module。它�
 - 支持选择历史 generation 并二次确认切换。
 - 完成态严格基于 `new_conversation_confirmed` / `route_switch_confirmed`。
 - 所有失败/空态可解释，且不会展示未授权的全局 session。
-
+- 权限模型文档明确从属关系、沟通关系、OAuth 身份、数据隔离、Bondie 多实例展示和设备 bridge 分发规则。

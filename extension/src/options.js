@@ -24,9 +24,13 @@ const fields = [
   'sessionBridgeBaseUrl',
   'sessionBridgeToken',
   'sessionBridgeTimeoutMs',
+  'sidePanelBondieFixtureMode',
   'sidePanelWorkspaceId',
+  'sidePanelOrganization',
+  'sidePanelRouteType',
   'sidePanelRouteKey',
-  'sidePanelRouteLabel'
+  'sidePanelRouteLabel',
+  'sidePanelOperatorId'
 ];
 const DEFAULT_CAPTURE_SESSION_KEY = 'browser-inbox';
 const DEFAULT_CAPTURE_SESSION_NAME = 'OpenClaw 本地通道';
@@ -36,9 +40,13 @@ const fieldDefaults = {
   sessionBridgeBaseUrl: '',
   sessionBridgeToken: '',
   sessionBridgeTimeoutMs: 20000,
+  sidePanelBondieFixtureMode: 'off',
   sidePanelWorkspaceId: 'default',
+  sidePanelOrganization: 'default',
+  sidePanelRouteType: 'browser',
   sidePanelRouteKey: 'browser:default',
-  sidePanelRouteLabel: 'Browser'
+  sidePanelRouteLabel: 'Browser',
+  sidePanelOperatorId: ''
 };
 const message = document.getElementById('message');
 

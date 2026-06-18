@@ -6,10 +6,10 @@ import {
 } from './contract.js';
 
 export class OpenClawSessionAdapter {
-  constructor({ config, chromeApi, fetchImpl = fetch } = {}) {
+  constructor({ config, chromeApi, fetchImpl = null } = {}) {
     this.config = config || {};
     this.chrome = chromeApi;
-    this.fetchImpl = fetchImpl;
+    this.fetchImpl = fetchImpl || ((...args) => fetch(...args));
   }
 
   async status() {

@@ -72,6 +72,8 @@ Side Panel UI 只通过 `chrome.runtime.sendMessage` 与 background 通信。
 ```text
 sidePanel.status
 sidePanel.bridge.status
+sidePanel.identity.status
+sidePanel.instances.list
 sidePanel.sessions.list
 sidePanel.sessions.new
 sidePanel.sessions.switch
@@ -178,7 +180,9 @@ export const openClawSidePanelModule = {
   sessionBridgeToken: '',
   sessionBridgeTimeoutMs: 20000,
   sidePanelWorkspaceId: 'default',
-  sidePanelRouteKey: 'browser:default'
+  sidePanelRouteKey: 'browser:default',
+  sidePanelOAuthProvider: '',
+  sidePanelSelectedInstanceId: ''
 }
 ```
 
@@ -187,6 +191,8 @@ export const openClawSidePanelModule = {
 - token 存在 `chrome.storage.local`，不打印到日志。
 - UI 只显示已配置/未配置，不显示完整 token。
 - debug export 必须脱敏。
+- OAuth token 或 refresh token 不进入普通 operation card、history 或 console-safe diagnostics。
+- instance/relationship 权限结果只作为展示和请求上下文，最终授权仍由服务端控制面判定。
 
 ## 测试契约
 
@@ -199,4 +205,6 @@ export const openClawSidePanelModule = {
 - `switchSession` 缺少 session id 时拒绝。
 - unconfirmed result 不进入 completed UI。
 - token 不出现在 history、operation card、console-safe diagnostics。
-
+- 未完成 OAuth 时返回 `identity_required`，不请求 session list。
+- 从属关系和沟通关系的 visibility policy 在 UI 中可区分。
+- 沟通关系不会展示非当前用户相关 sessions。

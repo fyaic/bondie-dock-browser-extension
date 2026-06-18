@@ -78,6 +78,13 @@
             </label>
           </div>
           <label>
+            Bondie preview
+            <select id="sidePanelBondieFixtureMode">
+              <option value="off">关闭</option>
+              <option value="fixtures">多实例权限 fixtures</option>
+            </select>
+          </label>
+          <label>
             Session Bridge URL
             <input id="sessionBridgeBaseUrl" placeholder="http://127.0.0.1:8787">
           </label>
@@ -87,18 +94,38 @@
           </label>
           <div class="form-grid">
             <label>
-              Workspace
+              Account
               <input id="sidePanelWorkspaceId" placeholder="default">
+            </label>
+            <label>
+              Organization
+              <input id="sidePanelOrganization" placeholder="default">
+            </label>
+          </div>
+          <div class="form-grid">
+            <label>
+              Route type
+              <select id="sidePanelRouteType">
+                <option value="browser">Browser</option>
+                <option value="direct">Direct chat</option>
+                <option value="group">Group chat</option>
+              </select>
             </label>
             <label>
               Route key
               <input id="sidePanelRouteKey" placeholder="browser:default">
             </label>
           </div>
-          <label>
-            Route label
-            <input id="sidePanelRouteLabel" placeholder="Browser">
-          </label>
+          <div class="form-grid">
+            <label>
+              Route label
+              <input id="sidePanelRouteLabel" placeholder="Browser">
+            </label>
+            <label>
+              Operator ID
+              <input id="sidePanelOperatorId" placeholder="paired-browser-host">
+            </label>
+          </div>
         </section>
 
         <section class="settings-panel">

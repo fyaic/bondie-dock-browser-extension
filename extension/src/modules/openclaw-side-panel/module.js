@@ -9,9 +9,13 @@ export const SIDE_PANEL_DEFAULT_CONFIG = {
   sessionBridgeBaseUrl: '',
   sessionBridgeToken: '',
   sessionBridgeTimeoutMs: 20000,
+  sidePanelBondieFixtureMode: 'off',
   sidePanelWorkspaceId: 'default',
+  sidePanelOrganization: 'default',
+  sidePanelRouteType: 'browser',
   sidePanelRouteKey: 'browser:default',
-  sidePanelRouteLabel: 'Browser'
+  sidePanelRouteLabel: 'Browser',
+  sidePanelOperatorId: ''
 };
 export const SIDE_PANEL_CONFIG_KEYS = Object.keys(SIDE_PANEL_DEFAULT_CONFIG);
 
@@ -35,6 +39,8 @@ export const openClawSidePanelModule = {
     'sidePanel.sessions.list': handleListSessions,
     'sidePanel.sessions.new': handleNewSession,
     'sidePanel.sessions.switch': handleSwitchSession,
+    'sidePanel.identity.status': handleIdentityStatus,
+    'sidePanel.instances.list': handleInstancesList,
     'sidePanel.scope.current': handleScopeCurrent,
     'sidePanel.settings.get': handleSettingsGet
   }
@@ -46,10 +52,12 @@ async function handleStatus({ context }) {
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
   const bridge = await readBridgeStatus({ config, module, connection, context });
   const scope = buildScope(config, identity, connection);
+  const viewer = buildViewer(identity, connection);
   const state = derivePanelState(module, connection, bridge);
 
   return ok({
     state,
+    viewer,
     module,
     connection,
     configuration: {
@@ -59,9 +67,10 @@ async function handleStatus({ context }) {
     },
     bridge,
     scope,
+    instances: buildInstanceSummaries({ config, bridge, scope }),
     phase: {
-      current: 'Phase 4: New and switch actions with confirmation gates',
-      next: 'Phase 5: Page Context Dock'
+      current: 'Phase 7: Bondie multi-instance permission UI',
+      next: 'Phase 7B: Identity adapter and instance-level session contract'
     },
     updatedAt: new Date().toISOString()
   });
@@ -69,6 +78,12 @@ async function handleStatus({ context }) {
 
 async function handleNewSession({ message, context }) {
   const actionContext = await readActionContext(context);
+  if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
+    return ok(buildBlockedActionPayload('new', {
+      ...actionContext,
+      gate: 'fixture_read_only'
+    }));
+  }
   if (actionContext.gate !== 'ready') {
     return ok(buildBlockedActionPayload('new', actionContext));
   }
@@ -82,6 +97,12 @@ async function handleNewSession({ message, context }) {
 
 async function handleSwitchSession({ message, context }) {
   const actionContext = await readActionContext(context);
+  if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
+    return ok(buildBlockedActionPayload('switch', {
+      ...actionContext,
+      gate: 'fixture_read_only'
+    }));
+  }
   if (actionContext.gate !== 'ready') {
     return ok(buildBlockedActionPayload('switch', actionContext));
   }
@@ -114,25 +135,37 @@ async function handleListSessions({ context }) {
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
   const bridge = await readBridgeStatus({ config, module, connection, context });
   const scope = buildScope(config, identity, connection);
+  const viewer = buildViewer(identity, connection);
   const gate = derivePanelState(module, connection, bridge);
 
   if (gate !== 'ready') {
     return ok({
       state: gate,
+      viewer,
       bridge,
       scope,
+      instances: buildInstanceSummaries({ config, bridge, scope }),
+      groups: [],
       sessions: [],
       currentBinding: null,
       updatedAt: new Date().toISOString()
     });
   }
 
+  if (config.sidePanelBondieFixtureMode === 'fixtures') {
+    return ok(buildFixtureSessionsPayload({ bridge, scope, viewer }));
+  }
+
   const result = await createSessionAdapter(config, context).listSessions(scope);
+  const grouped = buildLegacySessionGroups({ result, bridge, scope });
   return ok({
     state: result.state,
+    viewer,
     bridge: result.bridge ? mergeBridgeStatus(bridge, result.bridge) : bridge,
     scope,
-    sessions: result.sessions || [],
+    instances: grouped.instances,
+    groups: grouped.groups,
+    sessions: grouped.sessions,
     currentBinding: result.currentBinding || null,
     bridgeId: result.bridgeId || bridge.remote?.bridgeId || '',
     unresolved: Boolean(result.unresolved),
@@ -151,6 +184,32 @@ async function handleScopeCurrent({ context }) {
   });
 }
 
+async function handleIdentityStatus({ context }) {
+  const { coreStatus, identity, trustedPairing } = await readPanelContext(context);
+  const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
+
+  return ok({
+    viewer: buildViewer(identity, connection),
+    connection,
+    identityRequired: !connection.paired,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+async function handleInstancesList({ context }) {
+  const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
+  const module = buildModuleStatus(config);
+  const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
+  const bridge = await readBridgeStatus({ config, module, connection, context });
+  const scope = buildScope(config, identity, connection);
+
+  return ok({
+    viewer: buildViewer(identity, connection),
+    instances: buildInstanceSummaries({ config, bridge, scope }),
+    updatedAt: new Date().toISOString()
+  });
+}
+
 async function handleSettingsGet({ context }) {
   const { config } = await readPanelContext(context);
   const module = buildModuleStatus(config);
@@ -164,9 +223,13 @@ async function handleSettingsGet({ context }) {
       sessionBridgeBaseUrlConfigured: bridge.baseUrlConfigured,
       sessionBridgeAuthConfigured: bridge.authConfigured,
       sessionBridgeTimeoutMs: bridge.timeoutMs,
+      sidePanelBondieFixtureMode: config.sidePanelBondieFixtureMode,
       sidePanelWorkspaceId: config.sidePanelWorkspaceId,
+      sidePanelOrganization: config.sidePanelOrganization,
+      sidePanelRouteType: config.sidePanelRouteType,
       sidePanelRouteKey: config.sidePanelRouteKey,
-      sidePanelRouteLabel: config.sidePanelRouteLabel
+      sidePanelRouteLabel: config.sidePanelRouteLabel,
+      sidePanelOperatorId: config.sidePanelOperatorId
     }
   });
 }
@@ -214,9 +277,13 @@ function normalizeConfig(storedConfig) {
   config.sessionBridgeBaseUrl = cleanString(config.sessionBridgeBaseUrl);
   config.sessionBridgeToken = cleanString(config.sessionBridgeToken);
   config.sessionBridgeTimeoutMs = normalizeTimeout(config.sessionBridgeTimeoutMs);
+  config.sidePanelBondieFixtureMode = cleanString(config.sidePanelBondieFixtureMode) === 'fixtures' ? 'fixtures' : 'off';
   config.sidePanelWorkspaceId = cleanString(config.sidePanelWorkspaceId) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelWorkspaceId;
+  config.sidePanelOrganization = cleanString(config.sidePanelOrganization) || config.sidePanelWorkspaceId;
+  config.sidePanelRouteType = normalizeRouteType(config.sidePanelRouteType);
   config.sidePanelRouteKey = cleanString(config.sidePanelRouteKey) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelRouteKey;
   config.sidePanelRouteLabel = cleanString(config.sidePanelRouteLabel) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelRouteLabel;
+  config.sidePanelOperatorId = cleanString(config.sidePanelOperatorId);
   return config;
 }
 
@@ -321,13 +388,211 @@ function buildScope(config, identity, connection) {
     scope_version: 1,
     agent: 'openclaw',
     workspace_id: config.sidePanelWorkspaceId,
-    route_type: 'browser',
+    organization: config.sidePanelOrganization,
+    route_type: config.sidePanelRouteType,
     route_key: config.sidePanelRouteKey,
     route_label: config.sidePanelRouteLabel,
     device_id: cleanString(identity.hostId) || connection.hostId,
-    operator_id: connection.paired ? 'paired-browser-host' : 'unpaired',
+    operator_id: config.sidePanelOperatorId || (connection.paired ? 'paired-browser-host' : 'unpaired'),
     source: 'browser-extension-side-panel'
   };
+}
+
+function buildViewer(identity, connection) {
+  const hostId = cleanString(identity.hostId) || cleanString(connection.hostId);
+  return {
+    user_id: cleanString(connection.nodeId) || hostId || 'local-viewer',
+    display_name: 'Veil',
+    source: connection.paired ? 'paired-browser-host' : 'identity_required',
+    device_id: hostId
+  };
+}
+
+function buildInstanceSummaries({ config, bridge, scope }) {
+  if (config.sidePanelBondieFixtureMode === 'fixtures') {
+    return fixtureInstances();
+  }
+  return [buildLegacyInstance({ bridge, scope })];
+}
+
+function buildLegacySessionGroups({ result, bridge, scope }) {
+  const instance = buildLegacyInstance({ bridge, scope, bridgeId: result.bridgeId });
+  const sessions = (result.sessions || []).map((session) => attachInstanceToSession(session, instance, true));
+  return {
+    instances: [instance],
+    groups: [
+      {
+        instance_id: instance.instance_id,
+        instance,
+        state: result.state,
+        visibility_policy: instance.visibility_policy,
+        actions_enabled: true,
+        sessions
+      }
+    ],
+    sessions
+  };
+}
+
+function buildLegacyInstance({ bridge, scope, bridgeId = '' }) {
+  const remote = bridge.remote || {};
+  const displayName = cleanString(remote.bridgeName) || 'OpenClaw Mac mini';
+  return {
+    instance_id: 'legacy-session-bridge',
+    display_name: displayName,
+    short_name: 'Mac mini',
+    relationship_type: 'legacy_direct',
+    relationship_label: '当前 Bridge',
+    visibility_policy: 'participant_sessions',
+    visibility_label: '仅相关',
+    status: bridge.available ? 'online' : bridge.state || 'unknown',
+    bridge_id: cleanString(bridgeId) || cleanString(remote.bridgeId),
+    route_label: scope.route_label,
+    actions_enabled: true,
+    source: 'direct_session_bridge'
+  };
+}
+
+function attachInstanceToSession(session, instance, actionsEnabled) {
+  return {
+    ...session,
+    instance_id: instance.instance_id,
+    instance_name: instance.display_name,
+    visibility_policy: instance.visibility_policy,
+    visibility_label: instance.visibility_label,
+    relationship_type: instance.relationship_type,
+    relationship_label: instance.relationship_label,
+    actions_enabled: actionsEnabled
+  };
+}
+
+function buildFixtureSessionsPayload({ bridge, scope, viewer }) {
+  const instances = fixtureInstances();
+  const groups = instances.map((instance) => ({
+    instance_id: instance.instance_id,
+    instance,
+    state: instance.status === 'online' ? 'ready' : 'instance_unavailable',
+    visibility_policy: instance.visibility_policy,
+    actions_enabled: false,
+    sessions: fixtureSessionsFor(instance).map((session) => attachInstanceToSession(session, instance, false))
+  }));
+  const sessions = groups.flatMap((group) => group.sessions);
+  return {
+    state: 'ready',
+    viewer,
+    bridge,
+    scope,
+    instances,
+    groups,
+    sessions,
+    currentBinding: null,
+    bridgeId: bridge.remote?.bridgeId || '',
+    unresolved: false,
+    error: '',
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function fixtureInstances() {
+  return [
+    {
+      instance_id: 'bondie-a',
+      display_name: 'Bondie A',
+      short_name: 'A',
+      relationship_type: 'subordinate',
+      relationship_label: '个人私助',
+      visibility_policy: 'all_sessions',
+      visibility_label: '查看全部',
+      status: 'online',
+      bridge_id: 'openclaw-a',
+      route_label: '个人私助',
+      actions_enabled: false,
+      source: 'fixture'
+    },
+    {
+      instance_id: 'bondie-b',
+      display_name: 'Bondie B',
+      short_name: 'B',
+      relationship_type: 'communication',
+      relationship_label: '团队共享',
+      visibility_policy: 'participant_sessions',
+      visibility_label: '仅相关',
+      status: 'online',
+      bridge_id: 'openclaw-b',
+      route_label: '团队共享',
+      actions_enabled: false,
+      source: 'fixture'
+    },
+    {
+      instance_id: 'bondie-c',
+      display_name: 'Bondie C',
+      short_name: 'C',
+      relationship_type: 'communication',
+      relationship_label: '他人分享',
+      visibility_policy: 'participant_sessions',
+      visibility_label: '仅相关',
+      status: 'degraded',
+      bridge_id: 'openclaw-c',
+      route_label: '他人分享',
+      actions_enabled: false,
+      source: 'fixture'
+    }
+  ];
+}
+
+function fixtureSessionsFor(instance) {
+  const common = {
+    updated_at: new Date().toISOString(),
+    model: 'bondie-fixture',
+    project: instance.display_name,
+    context_window: 204800,
+    context_used: 12000,
+    generation_type: 'fixture',
+    restorable: false
+  };
+  if (instance.instance_id === 'bondie-a') {
+    return [
+      {
+        ...common,
+        session_id: 'bondie-a-session-owner',
+        session_key: 'bondie-a:all:owner',
+        title: '个人私助 · 今日工作线',
+        summary: '从属关系可查看该 Bondie 的全部会话，包括由他人触发的工作线。',
+        is_current: true,
+        last_messages: ['整理上午任务', '已合并到今日工作线']
+      },
+      {
+        ...common,
+        session_id: 'bondie-a-session-shared',
+        session_key: 'bondie-a:all:shared',
+        title: '个人私助 · 他人协作记录',
+        summary: '示例：从属关系下可见他人与该私助的历史对话。',
+        last_messages: ['请同步给 Veil', '已记录并等待确认']
+      }
+    ];
+  }
+  if (instance.instance_id === 'bondie-b') {
+    return [
+      {
+        ...common,
+        session_id: 'bondie-b-session-veil',
+        session_key: 'bondie-b:participant:veil',
+        title: '团队共享 · Veil 相关',
+        summary: '沟通关系只返回当前用户参与或被授权的 sessions。',
+        last_messages: ['更新侧栏权限模型', '仅展示用户相关会话']
+      }
+    ];
+  }
+  return [
+    {
+      ...common,
+      session_id: 'bondie-c-session-veil',
+      session_key: 'bondie-c:participant:veil',
+      title: '他人分享 · 需求确认',
+      summary: '分享型 Bondie 只显示当前用户可访问的沟通会话。',
+      last_messages: ['确认可见范围', '不展示其他用户对话']
+    }
+  ];
 }
 
 function derivePanelState(module, connection, bridge) {
@@ -405,6 +670,11 @@ function normalizeTimeout(value) {
     return SIDE_PANEL_DEFAULT_CONFIG.sessionBridgeTimeoutMs;
   }
   return Math.max(1000, Math.min(timeout, 120000));
+}
+
+function normalizeRouteType(value) {
+  const routeType = cleanString(value) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelRouteType;
+  return ['browser', 'direct', 'group'].includes(routeType) ? routeType : SIDE_PANEL_DEFAULT_CONFIG.sidePanelRouteType;
 }
 
 function cleanString(value) {

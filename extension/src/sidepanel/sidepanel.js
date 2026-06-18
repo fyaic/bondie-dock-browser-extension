@@ -2,6 +2,7 @@ const elements = {
   panelState: document.getElementById('panelState'),
   refresh: document.getElementById('refresh'),
   openOptions: document.getElementById('openOptions'),
+  connectOpenClaw: document.getElementById('connectOpenClaw'),
   stateKicker: document.getElementById('stateKicker'),
   stateTitle: document.getElementById('stateTitle'),
   stateSummary: document.getElementById('stateSummary'),
@@ -11,15 +12,29 @@ const elements = {
   bridgeValue: document.getElementById('bridgeValue'),
   scopeHint: document.getElementById('scopeHint'),
   workspaceValue: document.getElementById('workspaceValue'),
+  organizationValue: document.getElementById('organizationValue'),
+  routeTypeValue: document.getElementById('routeTypeValue'),
   routeValue: document.getElementById('routeValue'),
   deviceValue: document.getElementById('deviceValue'),
   actionHint: document.getElementById('actionHint'),
   bridgePermission: document.getElementById('bridgePermission'),
+  instanceSwitcher: document.getElementById('instanceSwitcher'),
   sessionsEmpty: document.getElementById('sessionsEmpty'),
   sessionsList: document.getElementById('sessionsList'),
   newSession: document.getElementById('newSession'),
   switchSession: document.getElementById('switchSession'),
   operationResult: document.getElementById('operationResult'),
+  pageDockHint: document.getElementById('pageDockHint'),
+  pageKindValue: document.getElementById('pageKindValue'),
+  pageTitleValue: document.getElementById('pageTitleValue'),
+  pageUrlValue: document.getElementById('pageUrlValue'),
+  pageSummarize: document.getElementById('pageSummarize'),
+  pageKnowledge: document.getElementById('pageKnowledge'),
+  pageResearch: document.getElementById('pageResearch'),
+  pageDockResult: document.getElementById('pageDockResult'),
+  handoffStatusValue: document.getElementById('handoffStatusValue'),
+  handoffDockList: document.getElementById('handoffDockList'),
+  openHistoryDock: document.getElementById('openHistoryDock'),
   phaseValue: document.getElementById('phaseValue'),
   nextStep: document.getElementById('nextStep'),
   diagnosticsOutput: document.getElementById('diagnosticsOutput')
@@ -86,14 +101,21 @@ const STATE_COPY = {
 let currentBridgePermissionOrigin = '';
 let selectedSessionId = '';
 let selectedSession = null;
+let selectedInstanceId = 'all';
 let lastStatusPayload = null;
 let lastSessionsPayload = null;
+let lastPageMeta = null;
 
 elements.refresh.addEventListener('click', () => refreshStatus());
 elements.openOptions.addEventListener('click', () => chrome.runtime.openOptionsPage());
+elements.connectOpenClaw.addEventListener('click', connectOpenClaw);
 elements.bridgePermission.addEventListener('click', requestBridgePermission);
 elements.newSession.addEventListener('click', requestNewSession);
 elements.switchSession.addEventListener('click', requestSwitchSession);
+elements.pageSummarize.addEventListener('click', () => runPageService('summarize'));
+elements.pageKnowledge.addEventListener('click', () => runPageService('knowledge'));
+elements.pageResearch.addEventListener('click', () => runPageService('research'));
+elements.openHistoryDock.addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('src/history.html') }));
 elements.newSession.title = '新开对话会调用 Session Bridge，并按 new_conversation_confirmed 判断完成态';
 elements.switchSession.title = '切换会话会调用 Session Bridge，并按 route_switch_confirmed 判断完成态';
 
@@ -115,6 +137,7 @@ async function refreshStatus() {
     } else {
       renderSessions({ state: response.payload?.state || 'booting', sessions: [] });
     }
+    await refreshPageDock();
   } catch (error) {
     renderError(error.message);
   } finally {
@@ -122,8 +145,141 @@ async function refreshStatus() {
   }
 }
 
+async function connectOpenClaw() {
+  elements.connectOpenClaw.disabled = true;
+  elements.connectOpenClaw.textContent = '连接中';
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'connect' });
+    if (!response?.ok) {
+      renderOperation({
+        state: 'failed',
+        action: 'connect',
+        error: response?.error || 'OpenClaw 连接失败'
+      });
+    }
+    await refreshStatus();
+  } catch (error) {
+    renderOperation({
+      state: 'failed',
+      action: 'connect',
+      error: error.message
+    });
+  } finally {
+    elements.connectOpenClaw.textContent = '连接 OpenClaw';
+    updateConnectButton(lastStatusPayload || {});
+  }
+}
+
+async function refreshPageDock() {
+  const [metaResult, handoffsResult] = await Promise.allSettled([
+    chrome.runtime.sendMessage({ type: 'pageMeta' }),
+    chrome.runtime.sendMessage({ type: 'handoffs' })
+  ]);
+  const metaResponse = resultValue(metaResult);
+  const handoffsResponse = resultValue(handoffsResult);
+
+  if (metaResponse?.ok) {
+    lastPageMeta = metaResponse.payload || {};
+    renderPageMeta(lastPageMeta);
+  } else {
+    lastPageMeta = null;
+    renderPageMetaError(metaResponse?.error || 'No active web tab');
+  }
+  renderHandoffDock(handoffsResponse?.payload?.handoffs || []);
+}
+
+async function runPageService(service) {
+  if (!lastPageMeta?.url) {
+    renderPageDockResult({
+      ok: false,
+      service,
+      error: '没有可处理的当前网页'
+    });
+    return;
+  }
+
+  setPageActionLoading(true);
+  renderPageDockResult({
+    ok: true,
+    service,
+    payload: {
+      status: `capturing-${service}`
+    }
+  });
+
+  try {
+    const permissionGranted = await requestCurrentPagePermission(lastPageMeta.url);
+    if (!permissionGranted) {
+      renderPageDockResult({
+        ok: false,
+        service,
+        error: '授权未完成，暂不读取页面正文'
+      });
+      return;
+    }
+
+    const message = {
+      type: 'pageService',
+      payload: { service }
+    };
+    const response = await chrome.runtime.sendMessage(message);
+    if (response?.ok || !isPagePermissionError(response)) {
+      renderPageDockResult({ ...response, service });
+      await refreshPageDock();
+      return;
+    }
+
+    renderPageDockResult({
+      ...response,
+      service,
+      error: response?.error || '页面权限未授予，暂不读取页面正文'
+    });
+    await refreshPageDock();
+  } catch (error) {
+    renderPageDockResult({
+      ok: false,
+      service,
+      error: error.message
+    });
+  } finally {
+    setPageActionLoading(false);
+  }
+}
+
+function isPagePermissionError(response) {
+  const error = String(response?.error || '');
+  return error.includes('Page summary failed');
+}
+
+async function requestCurrentPagePermission(url) {
+  if (!chrome.permissions?.request) {
+    return true;
+  }
+  let origin = '';
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    return false;
+  }
+  renderPageDockResult({
+    ok: true,
+    payload: {
+      status: 'requesting-page-permission',
+      origin
+    }
+  });
+  return await new Promise((resolve) => {
+    chrome.permissions.request({ origins: [`${origin}/*`] }, (result) => {
+      resolve(chrome.runtime.lastError ? false : Boolean(result));
+    });
+  });
+}
+
 async function refreshSessions() {
-  renderSessions({ state: 'loading_sessions', sessions: [] });
+  const hasRenderedSessions = Array.isArray(lastSessionsPayload?.sessions) && lastSessionsPayload.sessions.length > 0;
+  if (!hasRenderedSessions) {
+    renderSessions({ state: 'loading_sessions', sessions: [] });
+  }
   const response = await chrome.runtime.sendMessage({ type: 'sidePanel.sessions.list' });
   if (!response?.ok) {
     renderSessions({
@@ -141,8 +297,8 @@ async function refreshSessions() {
       module: lastStatusPayload?.module || {},
       connection: lastStatusPayload?.connection || {},
       phase: lastStatusPayload?.phase || {
-        current: 'Phase 4: New and switch actions with confirmation gates',
-        next: 'Phase 5: Page Context Dock'
+        current: 'Phase 6: Session-first real bridge validation',
+        next: 'Phase 7: Pairing UX, Edge validation, and Safari plan'
       }
     });
   }
@@ -170,7 +326,7 @@ async function requestNewSession() {
 }
 
 async function requestSwitchSession() {
-  if (!selectedSessionId || !selectedSession || selectedSession.restorable === false) {
+  if (!canRunSwitchSession()) {
     renderOperation({
       state: 'failed',
       action: 'switch',
@@ -185,7 +341,7 @@ async function requestSwitchSession() {
   await runSessionAction({
     type: 'sidePanel.sessions.switch',
     action: 'switch',
-    sessionId: selectedSessionId
+    sessionId: sessionIdentity(selectedSession)
   });
 }
 
@@ -266,21 +422,42 @@ function renderStatus(payload) {
   elements.bridgeValue.textContent = bridgeLabel(bridge);
   elements.scopeHint.textContent = scope.route_label || 'Browser route';
   elements.workspaceValue.textContent = scope.workspace_id || 'default';
+  elements.organizationValue.textContent = scope.organization || scope.workspace_id || 'default';
+  elements.routeTypeValue.textContent = scope.route_type || 'browser';
   elements.routeValue.textContent = scope.route_key || 'browser:default';
   elements.deviceValue.textContent = shortId(scope.device_id || connection.hostId || '');
   elements.actionHint.textContent = actionHint(payload);
-  elements.phaseValue.textContent = payload.phase?.current || 'Phase 4';
-  elements.nextStep.textContent = payload.phase?.next || '下一步接入 Page Context Dock。';
+  elements.phaseValue.textContent = payload.phase?.current || 'Phase 6';
+  elements.nextStep.textContent = payload.phase?.next || '下一步进入产品打磨和视觉 QA。';
+  updateConnectButton(payload);
   updateActionButtons(lastSessionsPayload || {});
   elements.bridgePermission.hidden = state !== 'bridge_permission_required' || !currentBridgePermissionOrigin;
   elements.diagnosticsOutput.textContent = diagnosticsText(payload);
 }
 
+function updateConnectButton(payload) {
+  const state = payload.state || 'booting';
+  const connection = payload.connection || {};
+  const canConnect = ['unpaired', 'offline', 'missing_config', 'bridge_permission_required', 'bridge_unavailable'].includes(state);
+  elements.connectOpenClaw.hidden = state === 'ready' || state === 'disabled';
+  elements.connectOpenClaw.disabled = connection.connecting || !canConnect;
+  elements.connectOpenClaw.textContent = connection.connecting ? '连接中' : '连接 OpenClaw';
+}
+
 function renderSessions(payload) {
   const state = payload.state || 'booting';
-  const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+  const groups = sessionGroups(payload);
+  if (selectedInstanceId !== 'all' && !groups.some((group) => group.instance_id === selectedInstanceId)) {
+    selectedInstanceId = 'all';
+  }
+  const visibleGroups = selectedInstanceId === 'all'
+    ? groups
+    : groups.filter((group) => group.instance_id === selectedInstanceId);
+  const sessions = visibleGroups.flatMap((group) => group.sessions || []);
   const currentId = payload.currentBinding?.session_id || '';
 
+  renderInstanceSwitcher(payload, groups);
+  updateSessionActionHint(payload, groups);
   elements.sessionsList.replaceChildren();
   if (!sessions.length) {
     elements.sessionsEmpty.hidden = false;
@@ -292,34 +469,164 @@ function renderSessions(payload) {
   }
 
   elements.sessionsEmpty.hidden = true;
-  if (!sessions.some((session) => sessionIdentity(session) === selectedSessionId)) {
-    selectedSessionId = currentId || sessions[0].session_id || sessions[0].session_key || '';
+  if (!sessions.some((session) => scopedSessionIdentity(session) === selectedSessionId)) {
+    const currentSession = sessions.find((session) => currentId && currentId === session.session_id);
+    selectedSessionId = currentSession ? scopedSessionIdentity(currentSession) : scopedSessionIdentity(sessions[0]);
   }
-  selectedSession = sessions.find((session) => sessionIdentity(session) === selectedSessionId) || null;
+  selectedSession = sessions.find((session) => scopedSessionIdentity(session) === selectedSessionId) || null;
 
-  for (const session of sessions) {
-    const item = document.createElement('li');
-    const button = document.createElement('button');
-    const id = sessionIdentity(session);
-    const isCurrent = session.is_current === true || (currentId && currentId === session.session_id);
-    button.type = 'button';
-    button.className = 'session-card';
-    button.setAttribute('aria-selected', id === selectedSessionId ? 'true' : 'false');
-    button.disabled = session.restorable === false;
-    button.title = sessionTitle(session);
-    button.addEventListener('click', () => {
-      selectedSessionId = id;
-      selectedSession = session;
-      renderSessions({ ...payload, sessions });
-    });
-    button.appendChild(sessionTitleRow(session, isCurrent));
-    button.appendChild(sessionSummary(session));
-    button.appendChild(sessionMeta(session));
-    button.appendChild(sessionKey(session));
-    item.appendChild(button);
-    elements.sessionsList.appendChild(item);
+  for (const group of visibleGroups) {
+    const groupItem = document.createElement('li');
+    groupItem.className = 'instance-group';
+    groupItem.appendChild(instanceGroupHeading(group));
+
+    const groupSessions = document.createElement('div');
+    groupSessions.className = 'instance-session-list';
+    for (const session of group.sessions || []) {
+      const button = document.createElement('button');
+      const id = scopedSessionIdentity(session);
+      const isCurrent = session.is_current === true || (currentId && currentId === session.session_id);
+      button.type = 'button';
+      button.className = 'session-card';
+      button.setAttribute('aria-selected', id === selectedSessionId ? 'true' : 'false');
+      button.disabled = session.restorable === false;
+      button.title = sessionTitle(session);
+      button.addEventListener('click', () => {
+        selectedSessionId = id;
+        selectedSession = session;
+        renderSessions(payload);
+      });
+      button.appendChild(sessionTitleRow(session, isCurrent));
+      button.appendChild(sessionSummary(session));
+      button.appendChild(sessionMeta(session));
+      button.appendChild(sessionKey(session));
+      groupSessions.appendChild(button);
+    }
+    groupItem.appendChild(groupSessions);
+    elements.sessionsList.appendChild(groupItem);
   }
   updateActionButtons(payload);
+}
+
+function sessionGroups(payload) {
+  const groups = Array.isArray(payload.groups) ? payload.groups : [];
+  if (groups.length) {
+    return groups.map((group) => {
+      const instance = group.instance || instanceById(payload.instances, group.instance_id);
+      return {
+        ...group,
+        instance,
+        instance_id: group.instance_id || instance?.instance_id || 'legacy-session-bridge',
+        sessions: Array.isArray(group.sessions) ? group.sessions : []
+      };
+    });
+  }
+  const instance = (Array.isArray(payload.instances) && payload.instances[0]) || {
+    instance_id: 'legacy-session-bridge',
+    display_name: 'OpenClaw',
+    relationship_label: '当前 Bridge',
+    visibility_label: '仅相关',
+    status: payload.state === 'ready' ? 'online' : payload.state,
+    actions_enabled: true
+  };
+  return [
+    {
+      instance_id: instance.instance_id,
+      instance,
+      state: payload.state,
+      actions_enabled: instance.actions_enabled !== false,
+      sessions: (payload.sessions || []).map((session) => ({
+        ...session,
+        instance_id: instance.instance_id,
+        instance_name: instance.display_name,
+        visibility_label: instance.visibility_label,
+        relationship_label: instance.relationship_label,
+        actions_enabled: instance.actions_enabled !== false
+      }))
+    }
+  ];
+}
+
+function instanceById(instances, instanceId) {
+  return Array.isArray(instances)
+    ? instances.find((instance) => instance.instance_id === instanceId) || null
+    : null;
+}
+
+function renderInstanceSwitcher(payload, groups) {
+  elements.instanceSwitcher.replaceChildren();
+  if (!groups.length) {
+    elements.instanceSwitcher.hidden = true;
+    return;
+  }
+  elements.instanceSwitcher.hidden = false;
+  const total = groups.reduce((sum, group) => sum + (group.sessions?.length || 0), 0);
+  elements.instanceSwitcher.appendChild(instanceChip({
+    id: 'all',
+    label: '全部',
+    meta: `${groups.length} 个 Bondie · ${total} 个会话`,
+    status: payload.state || 'ready',
+    selected: selectedInstanceId === 'all'
+  }));
+  for (const group of groups) {
+    const instance = group.instance || {};
+    elements.instanceSwitcher.appendChild(instanceChip({
+      id: group.instance_id,
+      label: instance.display_name || group.instance_id,
+      meta: `${instance.relationship_label || '关系'} · ${instance.visibility_label || visibilityLabel(group.visibility_policy)} · ${group.sessions?.length || 0}`,
+      status: instance.status || group.state,
+      selected: selectedInstanceId === group.instance_id
+    }));
+  }
+}
+
+function instanceChip({ id, label, meta, status, selected }) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'instance-chip';
+  button.dataset.selected = selected ? 'true' : 'false';
+  button.dataset.status = statusTone(status === 'online' ? 'ready' : status);
+  button.addEventListener('click', () => {
+    selectedInstanceId = id;
+    selectedSessionId = '';
+    selectedSession = null;
+    renderSessions(lastSessionsPayload || { state: 'booting', sessions: [] });
+  });
+
+  const labelNode = document.createElement('strong');
+  labelNode.textContent = label;
+  const metaNode = document.createElement('span');
+  metaNode.textContent = meta;
+  button.appendChild(labelNode);
+  button.appendChild(metaNode);
+  return button;
+}
+
+function instanceGroupHeading(group) {
+  const instance = group.instance || {};
+  const heading = document.createElement('div');
+  heading.className = 'instance-group-heading';
+
+  const titleWrap = document.createElement('div');
+  const title = document.createElement('strong');
+  title.textContent = instance.display_name || group.instance_id || 'Bondie';
+  const meta = document.createElement('span');
+  meta.textContent = [
+    instance.relationship_label || relationshipLabel(instance.relationship_type),
+    instance.visibility_label || visibilityLabel(group.visibility_policy),
+    instance.status === 'online' ? 'online' : instance.status
+  ].filter(Boolean).join(' · ');
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(meta);
+
+  const badge = document.createElement('span');
+  badge.className = 'instance-badge';
+  badge.dataset.policy = instance.visibility_policy || group.visibility_policy || '';
+  badge.textContent = instance.visibility_label || visibilityLabel(group.visibility_policy);
+
+  heading.appendChild(titleWrap);
+  heading.appendChild(badge);
+  return heading;
 }
 
 function sessionTitleRow(session, isCurrent) {
@@ -339,6 +646,12 @@ function sessionTitleRow(session, isCurrent) {
     const pill = document.createElement('span');
     pill.className = 'session-pill';
     pill.textContent = '空白';
+    row.appendChild(pill);
+  }
+  if (session.visibility_label) {
+    const pill = document.createElement('span');
+    pill.className = 'session-pill session-pill-muted';
+    pill.textContent = session.visibility_label;
     row.appendChild(pill);
   }
   return row;
@@ -406,12 +719,48 @@ function updateActionButtons(payload) {
 
 function canRunNewSession(payload = lastSessionsPayload || {}) {
   const state = payload.state || lastStatusPayload?.state;
-  return state === 'ready' || state === 'empty_sessions';
+  return (state === 'ready' || state === 'empty_sessions') && Boolean(selectedActionGroup(payload));
 }
 
 function canRunSwitchSession(payload = lastSessionsPayload || {}) {
   const state = payload.state || lastStatusPayload?.state;
-  return state === 'ready' && Boolean(selectedSessionId) && selectedSession?.restorable !== false;
+  return state === 'ready'
+    && Boolean(selectedActionGroup(payload))
+    && Boolean(selectedSessionId)
+    && Boolean(selectedSession)
+    && selectedSession.restorable !== false
+    && selectedSession.actions_enabled !== false;
+}
+
+function selectedActionGroup(payload = lastSessionsPayload || {}) {
+  const actionableGroups = sessionGroups(payload).filter((group) => {
+    const instance = group.instance || {};
+    return group.actions_enabled !== false && instance.actions_enabled !== false;
+  });
+  if (selectedInstanceId === 'all') {
+    return actionableGroups.length === 1 ? actionableGroups[0] : null;
+  }
+  return actionableGroups.find((group) => group.instance_id === selectedInstanceId) || null;
+}
+
+function updateSessionActionHint(payload, groups) {
+  const state = payload.state || lastStatusPayload?.state;
+  if (state !== 'ready') {
+    return;
+  }
+  const actionableGroups = groups.filter((group) => {
+    const instance = group.instance || {};
+    return group.actions_enabled !== false && instance.actions_enabled !== false;
+  });
+  if (!actionableGroups.length) {
+    elements.actionHint.textContent = '当前多 Bondie 权限预览为只读，真实 new/switch 等待 instance-level contract';
+    return;
+  }
+  if (selectedInstanceId === 'all' && actionableGroups.length > 1) {
+    elements.actionHint.textContent = '先选择具体 Bondie，再执行新开或恢复会话';
+    return;
+  }
+  elements.actionHint.textContent = 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
 }
 
 function renderOperation(payload) {
@@ -440,6 +789,241 @@ function renderOperation(payload) {
     cardNode.textContent = result.messageCard.text;
     elements.operationResult.appendChild(cardNode);
   }
+}
+
+function renderPageMeta(payload) {
+  const contentType = payload.contentType || 'webpage';
+  elements.pageKindValue.textContent = payload.contentLabel || pageKindText(contentType);
+  elements.pageTitleValue.textContent = compactText(payload.title || 'Untitled page', 96);
+  elements.pageUrlValue.textContent = compactText(payload.url || '', 120);
+  elements.pageDockHint.textContent = pageDockHint(payload);
+  elements.pageSummarize.disabled = false;
+  elements.pageResearch.disabled = false;
+  elements.pageKnowledge.textContent = primaryActionText(contentType);
+  elements.pageKnowledge.disabled = !payload.knowledgeSupported;
+}
+
+function renderPageMetaError(message) {
+  elements.pageKindValue.textContent = '网页';
+  elements.pageTitleValue.textContent = '未读取页面';
+  elements.pageUrlValue.textContent = redactText(message || '打开网页后可发起上下文任务');
+  elements.pageDockHint.textContent = '等待当前网页';
+  elements.pageSummarize.disabled = true;
+  elements.pageKnowledge.disabled = true;
+  elements.pageResearch.disabled = true;
+}
+
+function renderPageDockResult(response) {
+  const ok = response?.ok !== false;
+  const payload = response?.payload || {};
+  const service = response?.service || payload.service || 'summarize';
+  const state = ok ? payload.state || payload.status || 'done' : 'error';
+
+  elements.pageDockResult.hidden = false;
+  elements.pageDockResult.dataset.state = ok ? pageDockResultState(state) : 'error';
+  elements.pageDockResult.replaceChildren();
+
+  const title = document.createElement('strong');
+  title.textContent = ok ? pageServiceDoneText(service, payload) : pageServiceFailureText(response);
+  const detail = document.createElement('span');
+  detail.textContent = ok ? pageServiceDetail(service, payload) : redactText(response?.error || '发送失败');
+  elements.pageDockResult.appendChild(title);
+  elements.pageDockResult.appendChild(detail);
+
+  if (payload.captureId) {
+    const id = document.createElement('span');
+    id.textContent = `capture: ${shortId(payload.captureId)}`;
+    elements.pageDockResult.appendChild(id);
+  }
+  if (state === 'requesting-page-permission' && payload.origin) {
+    const origin = document.createElement('span');
+    origin.textContent = `origin: ${payload.origin}`;
+    elements.pageDockResult.appendChild(origin);
+  }
+}
+
+function renderHandoffDock(handoffs) {
+  elements.handoffDockList.replaceChildren();
+  const visible = Array.isArray(handoffs) ? handoffs.slice(0, 3) : [];
+  const latest = visible[0];
+  elements.handoffStatusValue.textContent = latest ? stateText(latest.state) : '暂无处理记录';
+
+  if (!visible.length) {
+    const empty = document.createElement('p');
+    empty.className = 'sessions-empty';
+    empty.textContent = '主动点击上方按钮后，处理记录会显示在这里';
+    elements.handoffDockList.appendChild(empty);
+    return;
+  }
+
+  for (const handoff of visible) {
+    const card = document.createElement('article');
+    card.className = 'handoff-card';
+    card.dataset.state = handoff.state || 'idle';
+    const title = document.createElement('strong');
+    title.textContent = compactText(handoff.title || 'Untitled page', 86);
+    const meta = document.createElement('span');
+    meta.textContent = [
+      stateText(handoff.state),
+      pageServiceText(handoff.service || handoff.intent),
+      handoff.contentLabel || pageKindText(handoff.contentType)
+    ].filter(Boolean).join(' · ');
+    card.appendChild(title);
+    card.appendChild(meta);
+
+    const summary = popupReplyText(handoff.latestReply || handoff.error || '');
+    if (summary) {
+      const body = document.createElement('p');
+      body.textContent = summary;
+      card.appendChild(body);
+    }
+    const path = extractMarkdownPath(handoff.latestReply);
+    if (path) {
+      const artifact = document.createElement('p');
+      artifact.className = 'artifact-path';
+      artifact.textContent = path;
+      card.appendChild(artifact);
+    }
+    elements.handoffDockList.appendChild(card);
+  }
+}
+
+function setPageActionLoading(loading) {
+  const canRun = Boolean(lastPageMeta?.url);
+  elements.pageSummarize.disabled = loading || !canRun;
+  elements.pageResearch.disabled = loading || !canRun;
+  elements.pageKnowledge.disabled = loading || !canRun || !lastPageMeta?.knowledgeSupported;
+}
+
+function pageDockHint(payload) {
+  const type = payload.contentType || 'webpage';
+  if (type === 'video') {
+    return '视频页面可入库或发起深度调研';
+  }
+  if (type === 'github-repository') {
+    return 'GitHub 仓库可解析 README、结构和代码线索';
+  }
+  if (type === 'article') {
+    return '文章页面可快速读懂、入库或深研';
+  }
+  return '当前网页可作为 OpenClaw 上下文';
+}
+
+function pageKindText(contentType) {
+  const labels = {
+    article: '文章',
+    webpage: '网页',
+    video: '视频',
+    'github-repository': 'GitHub 仓库'
+  };
+  return labels[contentType] || '网页';
+}
+
+function primaryActionText(contentType) {
+  const labels = {
+    article: '解析文章为知识笔记',
+    webpage: '解析当前页',
+    video: '解析视频内容',
+    'github-repository': '解析 GitHub 仓库'
+  };
+  return labels[contentType] || '解析当前页';
+}
+
+function pageServiceText(service) {
+  const labels = {
+    knowledge: '入库为知识笔记',
+    relate: '找库内关联',
+    research: '发起深研',
+    issue: 'Issue 草案',
+    summarize: '快速读懂',
+    workflow: '转成行动',
+    later: '稍后处理',
+    save: '稍后处理',
+    next: '转成行动'
+  };
+  return labels[service] || '页面处理';
+}
+
+function pageServiceDoneText(service, payload) {
+  if (payload.status === 'requesting-page-permission') {
+    return '等待页面权限';
+  }
+  if (String(payload.status || '').startsWith('capturing-')) {
+    return pageServicePendingText(service);
+  }
+  const labels = {
+    knowledge: '已交给 Media to Notes',
+    relate: '已交给 OpenClaw 查找关联',
+    research: '已交给 OpenClaw 发起深研',
+    issue: '已交给 OpenClaw 生成草案',
+    summarize: '已交给 OpenClaw 快速读懂',
+    workflow: '已交给 OpenClaw 转成行动',
+    later: '已交给 OpenClaw 稍后处理'
+  };
+  return labels[service] || '已交给 OpenClaw';
+}
+
+function pageServiceFailureText(response) {
+  return response?.error ? '页面任务失败' : '发送失败';
+}
+
+function pageServiceDetail(service, payload) {
+  if (payload.status === 'requesting-page-permission') {
+    return payload.origin ? `等待授权 · ${payload.origin}` : '等待授权';
+  }
+  if (String(payload.status || '').startsWith('capturing-')) {
+    return '正在读取当前页面正文，仅在点击后执行';
+  }
+  return [
+    pageServiceText(service),
+    payload.contentLabel || pageKindText(payload.contentType),
+    payload.ability?.name,
+    stateText(payload.state)
+  ].filter(Boolean).join(' · ');
+}
+
+function pageServicePendingText(service) {
+  const labels = {
+    knowledge: '正在启动 Media to Notes',
+    relate: '正在查找库内关联',
+    research: '正在准备深研任务',
+    issue: '正在生成 Issue 草案',
+    summarize: '正在快速读懂',
+    workflow: '正在转成行动',
+    later: '正在保存稍后线索',
+    save: '正在保存稍后线索',
+    next: '正在转成行动'
+  };
+  return labels[service] || '正在发送';
+}
+
+function pageDockResultState(state) {
+  const text = String(state || '');
+  if (text === 'requesting-page-permission' || text.startsWith('capturing-') || text === 'queued' || text === 'processing') {
+    return 'pending';
+  }
+  return 'done';
+}
+
+function stateText(state) {
+  const states = {
+    queued: '排队中',
+    processing: '处理中',
+    done: '已完成',
+    error: '失败',
+    'captured-local': '本地已捕获'
+  };
+  return states[state] || '待命';
+}
+
+function resultValue(result) {
+  if (result.status === 'fulfilled') {
+    return result.value;
+  }
+  return {
+    ok: false,
+    error: result.reason?.message || 'Side Panel request failed'
+  };
 }
 
 function operationTitle(action, state) {
@@ -637,6 +1221,27 @@ function sessionIdentity(session) {
   return session.session_id || session.session_key || '';
 }
 
+function scopedSessionIdentity(session) {
+  return `${session.instance_id || 'legacy-session-bridge'}::${sessionIdentity(session)}`;
+}
+
+function relationshipLabel(type) {
+  const labels = {
+    subordinate: '个人私助',
+    communication: '沟通关系',
+    legacy_direct: '当前 Bridge'
+  };
+  return labels[type] || '关系';
+}
+
+function visibilityLabel(policy) {
+  const labels = {
+    all_sessions: '查看全部',
+    participant_sessions: '仅相关'
+  };
+  return labels[policy] || '权限';
+}
+
 function lastMessagePreview(messages) {
   if (!Array.isArray(messages) || !messages.length) {
     return '';
@@ -666,6 +1271,43 @@ function tokenText(session) {
     return '';
   }
   return `${session.context_used}/${session.context_window} tokens`;
+}
+
+function popupReplyText(text) {
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed || trimmed === '{"ok":true}') {
+    return '';
+  }
+  return compactText(extractReadableSummary(trimmed), 180);
+}
+
+function extractReadableSummary(text) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  const path = extractMarkdownPath(normalized);
+  const withoutPath = path ? normalized.replace(path, '').trim() : normalized;
+  const markerPatterns = [
+    /(?:TL;?DR|TL；?DR|TLDR)[：:]\s*([^【\[]+)/i,
+    /【摘要】\s*([^【\[]+)/,
+    /摘要[：:]\s*([^【\[]+)/
+  ];
+  for (const pattern of markerPatterns) {
+    const match = withoutPath.match(pattern);
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+  }
+  return withoutPath;
+}
+
+function extractMarkdownPath(text) {
+  const raw = typeof text === 'string' ? text : '';
+  const match = raw.match(/(?:~|\/Users|\/tmp|\/var|\/private|\/)[^\n\r"'`<>]*?\.md\b/);
+  return match ? match[0].trim() : '';
+}
+
+function compactText(text, limit) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit - 1)}…` : normalized;
 }
 
 function shortId(value) {

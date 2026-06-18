@@ -28,6 +28,9 @@
         <span id="stateKicker" class="state-kicker">启动中</span>
         <h1 id="stateTitle">正在读取 OpenClaw 状态</h1>
         <p id="stateSummary">Side Panel 会通过后台模块获取连接、配对和配置状态。</p>
+        <div class="state-actions">
+          <button id="connectOpenClaw" class="primary-action" type="button">连接 OpenClaw</button>
+        </div>
       </section>
 
       <section class="status-matrix" aria-label="连接和配置状态">
@@ -49,10 +52,28 @@
         </div>
       </section>
 
-      <section class="section sidepanel-section">
+      <section class="section sidepanel-section session-control-section">
         <div class="section-heading">
           <div>
-            <h2>当前 Scope</h2>
+            <h2>OpenClaw 会话</h2>
+            <p id="actionHint">等待 Session Bridge adapter</p>
+          </div>
+        </div>
+        <button id="bridgePermission" class="ghost-action" type="button" hidden>授权 Bridge 访问</button>
+        <nav id="instanceSwitcher" class="instance-switcher" aria-label="Bondie 实例切换"></nav>
+        <div class="session-actions">
+          <button id="newSession" class="primary-action" type="button" disabled>新开对话</button>
+          <button id="switchSession" type="button" disabled>恢复所选</button>
+        </div>
+        <div id="sessionsEmpty" class="sessions-empty">等待会话列表</div>
+        <ol id="sessionsList" class="sessions-list" aria-label="OpenClaw 会话列表"></ol>
+        <div id="operationResult" class="operation-result" hidden></div>
+      </section>
+
+      <section class="section sidepanel-section scope-section">
+        <div class="section-heading">
+          <div>
+            <h2>当前路由</h2>
             <p id="scopeHint">Browser route</p>
           </div>
         </div>
@@ -60,6 +81,14 @@
           <div>
             <dt>Workspace</dt>
             <dd id="workspaceValue">default</dd>
+          </div>
+          <div>
+            <dt>Organization</dt>
+            <dd id="organizationValue">default</dd>
+          </div>
+          <div>
+            <dt>Type</dt>
+            <dd id="routeTypeValue">browser</dd>
           </div>
           <div>
             <dt>Route</dt>
@@ -72,21 +101,34 @@
         </dl>
       </section>
 
-      <section class="section sidepanel-section">
+      <section class="section sidepanel-section page-context-dock">
         <div class="section-heading">
           <div>
-            <h2>会话控制</h2>
-            <p id="actionHint">等待 Session Bridge adapter</p>
+            <h2>页面上下文</h2>
+            <p id="pageDockHint">等待当前网页</p>
           </div>
+          <span id="pageKindValue" class="context-kind">网页</span>
         </div>
-        <button id="bridgePermission" class="ghost-action" type="button" hidden>授权 Bridge 访问</button>
-        <div id="sessionsEmpty" class="sessions-empty">等待会话列表</div>
-        <ol id="sessionsList" class="sessions-list" aria-label="OpenClaw 会话列表"></ol>
-        <div class="session-actions">
-          <button id="newSession" class="primary-action" type="button" disabled>新开对话</button>
-          <button id="switchSession" type="button" disabled>切换会话</button>
+        <div class="page-context-main">
+          <strong id="pageTitleValue">未读取页面</strong>
+          <span id="pageUrlValue">打开网页后可发起上下文任务</span>
         </div>
-        <div id="operationResult" class="operation-result" hidden></div>
+        <div class="page-actions">
+          <button id="pageSummarize" type="button" disabled>快速读懂</button>
+          <button id="pageKnowledge" class="primary-action" type="button" disabled>知识入库</button>
+          <button id="pageResearch" type="button" disabled>深度调研</button>
+        </div>
+        <div id="pageDockResult" class="page-dock-result" hidden></div>
+        <div class="handoff-strip">
+          <div class="section-heading compact-heading">
+            <div>
+              <h3>任务状态</h3>
+              <p id="handoffStatusValue">暂无处理记录</p>
+            </div>
+            <button id="openHistoryDock" class="compact" type="button">历史</button>
+          </div>
+          <div id="handoffDockList" class="handoff-dock-list"></div>
+        </div>
       </section>
 
       <section class="section sidepanel-section">
