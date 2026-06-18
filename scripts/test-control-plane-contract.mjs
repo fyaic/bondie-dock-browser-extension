@@ -59,6 +59,29 @@ assert.equal(instancesPayload.instances.length, 2);
 assert.equal(instancesPayload.instances[0].visibility_label, '查看全部');
 assert.equal(instancesPayload.instances[1].visibility_label, '仅相关');
 
+const degradedInstancesPayload = normalizeControlPlaneInstancesPayload({
+  instances: [
+    {
+      instance_id: 'bondie-c',
+      display_name: 'Bondie C',
+      relationship_type: 'communication',
+      visibility_policy: 'participant_sessions',
+      status: 'degraded',
+      health: {
+        state: 'sessions_degraded',
+        checked_at: '2026-06-18T08:00:00Z',
+        stale: false,
+        latency_ms: 820,
+        sessions_ready: false
+      }
+    }
+  ]
+});
+assert.equal(degradedInstancesPayload.instances.length, 1);
+assert.equal(degradedInstancesPayload.instances[0].actions_enabled, false);
+assert.equal(degradedInstancesPayload.instances[0].health.state, 'sessions_degraded');
+assert.equal(degradedInstancesPayload.instances[0].health.sessions_ready, false);
+
 assert.equal(
   CONTROL_PLANE_ENDPOINTS.instanceSessions('bondie/b'),
   '/v1/bondie-instances/bondie%2Fb/sessions'

@@ -173,6 +173,8 @@ adapter readiness 规则：
 - 缺 OAuth access token：返回 `identity_required`，不发请求。
 - 缺或无效 `instanceContext`：返回 `instance_unavailable`，不回退全局 route。
 - instance `actions_enabled=false`：new/switch 返回 `instance_action_unavailable`。
+- instance health 摘要会保留 `state`、`checked_at`、`stale`、`latency_ms`、`sessions_ready`，但不包含 endpoint/token/debug raw。
+- 未显式设置 `actions_enabled=true` 时，只有 `status=online/ready` 的实例默认允许 action；`degraded/offline` 默认禁用。
 
 规范化后的 session 会补充：
 

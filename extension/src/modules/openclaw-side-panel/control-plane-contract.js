@@ -113,10 +113,9 @@ export function normalizeControlPlaneInstance(instance) {
     return null;
   }
 
-  const status = cleanString(instance.status || instance.health || instance.bridge_status) || 'unknown';
-  const actionsEnabled = instance.actions_enabled === false
-    ? false
-    : instance.can_switch_session !== false && instance.can_create_session !== false && status !== 'offline';
+  const health = normalizeHealth(instance.health);
+  const status = cleanString(instance.status || health?.state || instance.bridge_status) || 'unknown';
+  const actionsEnabled = resolveActionsEnabled(instance, status);
 
   return {
     instance_id: instanceId,
@@ -131,6 +130,7 @@ export function normalizeControlPlaneInstance(instance) {
     organization: cleanString(instance.organization),
     bridge_id: cleanString(instance.bridge_id || instance.bridgeId),
     status,
+    health,
     capabilities: safeArray(instance.capabilities).map(cleanString).filter(Boolean),
     actions_enabled: actionsEnabled
   };
@@ -270,6 +270,31 @@ function normalizeMessageCard(card) {
     title: cleanString(card.title),
     text: cleanString(card.text)
   };
+}
+
+function normalizeHealth(health) {
+  if (!health || typeof health !== 'object') {
+    return null;
+  }
+  return {
+    state: cleanString(health.state),
+    checked_at: cleanString(health.checked_at || health.checkedAt),
+    stale: health.stale === true,
+    latency_ms: safeNumber(health.latency_ms ?? health.latencyMs),
+    sessions_ready: health.sessions_ready === true
+  };
+}
+
+function resolveActionsEnabled(instance, status) {
+  if (instance.actions_enabled === true) {
+    return true;
+  }
+  if (instance.actions_enabled === false) {
+    return false;
+  }
+  return instance.can_switch_session !== false
+    && instance.can_create_session !== false
+    && (status === 'online' || status === 'ready');
 }
 
 function filterHeaderObject(headers) {

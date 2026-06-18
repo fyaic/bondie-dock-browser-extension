@@ -241,6 +241,7 @@
 - [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`，输出 `{"ok":true,"instances":2,"sessions":1,"adapterCalls":4,"moduleFailClosed":true}`。
 - [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-adapter.js"`。
 - [x] Phase 7C fail-closed smoke：message layer 在已配对但 `sidePanelIdentityMode=oauth` 时返回 `identity_required`，不列 sessions/instances，new action 不确认。
+- [x] Phase 8 health projection smoke：Control Plane instance normalizer 保留 health 摘要，degraded instance 默认禁用 actions。
 
 ## 待确认
 
