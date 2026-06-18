@@ -70,6 +70,7 @@
 - [x] 本地提交 Phase 7C Control Plane adapter skeleton：`9b3fe96`。
 - [x] Phase 8 Bridge Registry schema：新增 `13-bridge-registry-schema.md`，拆清 instance、relationship、bridge、secret、binding、health snapshot。
 - [x] Phase 8 Device Onboarding checklist：新增 `14-device-onboarding-checklist.md`，整理设备安装、Tailscale、smoke、registry、回滚。
+- [x] Phase 8 Multi-bridge health readiness：新增 `15-multi-bridge-health-readiness.md`，定义 health 聚合、readiness gate、UI 映射和告警。
 
 ## Linear 树
 
@@ -181,7 +182,7 @@
 - [x] 文档冻结：当前 Mac mini bridge 是 legacy single-device reference。
 - [x] 设计 bridge registry schema：instance id、bridge id、endpoint、health、capabilities。
 - [x] 设计设备 onboarding checklist：OpenClaw、Tailscale、bridge、launchd/systemd、smoke。
-- [ ] 设计 multi-bridge health aggregation 和 readiness gate。
+- [x] 设计 multi-bridge health aggregation 和 readiness gate。
 - [x] 将 B `/v1/sessions` Gateway 504 性能修复拆为 B 侧依赖任务，并完成源码修复记录。
 
 ## 本轮验证

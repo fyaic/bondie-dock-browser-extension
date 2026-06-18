@@ -185,6 +185,10 @@ Browser Extension
 - 单设备高级用户。
 - 内部 smoke。
 
+## Multi-bridge Health
+
+多设备健康聚合和 readiness gate 见 `15-multi-bridge-health-readiness.md`。核心原则是：health 只决定状态和调用可用性，不改变 OAuth relationship / visibility policy。
+
 ## Side Panel 需要的聚合 API
 
 浏览器插件理想上只调用控制面：
@@ -228,7 +232,7 @@ POST bridge /v1/switch-session
 - Instance -> bridge 绑定模型。字段草案已见 `13-bridge-registry-schema.md`。
 - OAuth user -> instance relationship 模型。字段草案已见 `13-bridge-registry-schema.md`。
 - 控制面到多 bridge 的 token/secret 管理。
-- 多设备 health aggregation。
+- 多设备 health aggregation。设计见 `15-multi-bridge-health-readiness.md`。
 - Session list cache 和超时降级策略。
 - 多实例 fixtures 和 E2E smoke。
 - 安装包或脚本化 bootstrap。
