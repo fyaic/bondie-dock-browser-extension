@@ -50,6 +50,8 @@
 - [x] fixture instance actions 返回 `fixture_read_only`，不触发真实 Bridge。
 - [x] `sidePanelIdentityMode=oauth` 时未接入 OAuth adapter 前返回 `identity_required`，不列 sessions/instances。
 - [x] `sidePanelInstanceProvider=bondie-control-plane` 时未接入 control-plane adapter 前不回退 legacy sessions。
+- [x] Control Plane contract 要求 `subordinate/all_sessions` 与 `communication/participant_sessions` 显式匹配，缺失或不匹配时过滤。
+- [x] Control Plane action 完成态只认 explicit confirmation 字段，不把 HTTP 200 或 `ok=true` 当成业务完成。
 
 ## 安全检查
 
@@ -97,6 +99,7 @@ node --check "extension/src/confirm.js"
 test ! -f "extension/src/history.js" || node --check "extension/src/history.js"
 test ! -f "extension/src/pattern-memory.js" || node --check "extension/src/pattern-memory.js"
 test ! -f "extension/src/modules/openclaw-side-panel/contract.js" || node --check "extension/src/modules/openclaw-side-panel/contract.js"
+test ! -f "extension/src/modules/openclaw-side-panel/control-plane-contract.js" || node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"
 test ! -f "extension/src/modules/openclaw-side-panel/session-adapter.js" || node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"
 test ! -f "extension/src/modules/openclaw-side-panel/module.js" || node --check "extension/src/modules/openclaw-side-panel/module.js"
 test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/sidepanel/sidepanel.js"

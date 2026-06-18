@@ -22,7 +22,8 @@ extension/
 │   │   └── openclaw-side-panel/
 │   │       ├── module.js
 │   │       ├── session-adapter.js
-│   │       └── contract.js
+│   │       ├── contract.js
+│   │       └── control-plane-contract.js
 │   └── sidepanel/
 │       ├── sidepanel.html
 │       ├── sidepanel.js
@@ -109,6 +110,27 @@ chrome.runtime.sendMessage({
 - legacy direct Bridge 只允许空 `instanceId` 或 `legacy-session-bridge`。
 - 未知 instance 返回 `instance_unavailable`，不回退到全局 sessions。
 - fixture instance action 返回 `fixture_read_only`，不调用真实 Bridge。
+
+Phase 7C 起，生产 Bondie Control Plane contract 固化在
+`extension/src/modules/openclaw-side-panel/control-plane-contract.js`。当前只提供 endpoint builder、OAuth header builder、identity/instances/sessions/action payload normalizer，不接入真实网络 adapter。
+
+Control Plane endpoint 草案：
+
+```text
+GET  /v1/me
+GET  /v1/bondie-instances
+GET  /v1/bondie-instances/{instance_id}/sessions
+POST /v1/bondie-instances/{instance_id}/sessions/new
+POST /v1/bondie-instances/{instance_id}/sessions/switch
+```
+
+约束：
+
+- `subordinate` 必须对应 `all_sessions`。
+- `communication` 必须对应 `participant_sessions`。
+- relationship / visibility 缺失或不匹配时 fail closed。
+- adapter 未接入前，`bondie-control-plane` provider 不允许 fallback 到 legacy Session Bridge。
+- new/switch 完成态只看 explicit confirmation 字段，不能只看 HTTP 200 或 `ok=true`。
 
 建议响应形态：
 

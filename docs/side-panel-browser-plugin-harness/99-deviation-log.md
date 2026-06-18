@@ -23,6 +23,9 @@
 - 偏差：引入 Bondie Control Plane provider 后，如果 provider 未实现时自动回退 legacy Bridge，会把生产权限路径误连到单 Bridge 开发路径。
   - 处理：新增 `sidePanelInstanceProvider`。默认 `legacy-session-bridge` 保持现有体验；切换到 `bondie-control-plane` 后要求 OAuth/control-plane adapter，当前返回 `identity_required` / `permission_unresolved`，不回退 legacy sessions。
 
+- 偏差：如果直接实现 Control Plane fetch adapter，可能在 OAuth provider 和服务端归属未定时制造半通不通的生产路径。
+  - 处理：Phase 7C 先落地纯 contract helper 和文档，冻结 endpoint、relationship/visibility 校验、payload normalizer 与 action confirmation 规则；runtime 仍保持 `bondie-control-plane` fail closed。
+
 ## 2026-06-17
 
 - 偏差：新需求从 OpenClaw 单实例升级为 Bondie 多实例，但分支仍停留在 `feature/openclaw-browser-side-panel-plugin`。
