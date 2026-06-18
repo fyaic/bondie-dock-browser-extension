@@ -235,8 +235,9 @@
 - [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"`。
 - [x] Phase 7C diff hygiene：`git diff --check`。
 - [x] Phase 7C contract smoke：normalize A/B/C instances、过滤无效权限、保留 Control Plane URL path prefix、session 补充 instance metadata、new/switch confirmation gate。
-- [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`，输出 `{"ok":true,"instances":2,"sessions":1,"adapterCalls":4}`。
+- [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`，输出 `{"ok":true,"instances":2,"sessions":1,"adapterCalls":4,"moduleFailClosed":true}`。
 - [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-adapter.js"`。
+- [x] Phase 7C fail-closed smoke：message layer 在已配对但 `sidePanelIdentityMode=oauth` 时返回 `identity_required`，不列 sessions/instances，new action 不确认。
 
 ## 待确认
 

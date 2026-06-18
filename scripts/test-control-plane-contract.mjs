@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { BondieControlPlaneAdapter } from '../extension/src/modules/openclaw-side-panel/control-plane-adapter.js';
+import { openClawSidePanelModule } from '../extension/src/modules/openclaw-side-panel/module.js';
 import {
   CONTROL_PLANE_ENDPOINTS,
   buildControlPlaneHeaders,
@@ -203,11 +204,39 @@ assert.equal(calls.length, 4);
 assert.ok(calls.every((call) => call.options.headers.Authorization === 'Bearer redacted-token'));
 assert.ok(calls.every((call) => call.url.startsWith('https://bondie.example.com/api/v1/')));
 
+const pairedButNoOAuthContext = createModuleContext({
+  sidePanelIdentityMode: 'oauth',
+  sidePanelInstanceProvider: 'bondie-control-plane',
+  sidePanelControlPlaneBaseUrl: 'https://bondie.example.com/api'
+});
+const moduleListResult = await openClawSidePanelModule.messages['sidePanel.sessions.list']({
+  message: {},
+  context: pairedButNoOAuthContext
+});
+assert.equal(moduleListResult.ok, true);
+assert.equal(moduleListResult.payload.state, 'identity_required');
+assert.equal(moduleListResult.payload.sessions.length, 0);
+assert.equal(moduleListResult.payload.instances.length, 0);
+assert.equal(moduleListResult.payload.identity.authenticated, false);
+assert.equal(moduleListResult.payload.instanceProvider.provider, 'bondie-control-plane');
+
+const moduleNewResult = await openClawSidePanelModule.messages['sidePanel.sessions.new']({
+  message: {
+    instanceId: 'bondie-a'
+  },
+  context: pairedButNoOAuthContext
+});
+assert.equal(moduleNewResult.ok, true);
+assert.equal(moduleNewResult.payload.state, 'identity_required');
+assert.equal(moduleNewResult.payload.confirmed, false);
+assert.equal(moduleNewResult.payload.instanceId, 'bondie-a');
+
 console.log(JSON.stringify({
   ok: true,
   instances: instancesPayload.instances.length,
   sessions: sessionsPayload.sessions.length,
-  adapterCalls: calls.length
+  adapterCalls: calls.length,
+  moduleFailClosed: true
 }));
 
 function jsonResponse(body, status = 200) {
@@ -216,5 +245,28 @@ function jsonResponse(body, status = 200) {
     status,
     json: async () => body,
     text: async () => JSON.stringify(body)
+  };
+}
+
+function createModuleContext(configOverrides = {}) {
+  return {
+    chrome: {},
+    getConfig: async () => configOverrides,
+    ensureHostIdentity: async () => ({
+      hostId: 'host-1'
+    }),
+    getTrustedPairingState: async () => ({
+      paired: true,
+      pairing: 'paired',
+      hasDeviceToken: true
+    }),
+    getConnectionStatus: () => ({
+      connected: true,
+      connecting: false,
+      online: true,
+      hostId: 'host-1',
+      nodeId: 'node-1',
+      lastError: ''
+    })
   };
 }
