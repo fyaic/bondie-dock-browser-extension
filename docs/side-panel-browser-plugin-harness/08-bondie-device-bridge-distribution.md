@@ -93,6 +93,8 @@ Browser Extension
 
 ## Bridge Registry 草案
 
+详细字段和约束见 `13-bridge-registry-schema.md`。本节只保留核心形态。
+
 ```json
 {
   "instance_id": "bondie-a",
@@ -115,6 +117,8 @@ Browser Extension
 Secrets such as `SESSION_BRIDGE_TOKEN` must remain server-side in the control plane or deployment secret store. The browser extension should not store tokens for every Bondie device.
 
 ## Device Onboarding
+
+可执行清单见 `14-device-onboarding-checklist.md`。本节只保留摘要。
 
 每个新 Bondie 设备的标准流程：
 
@@ -220,9 +224,9 @@ POST bridge /v1/switch-session
 
 当前 B 侧已有一对一标准分发基础，但 Bondie 多实例还缺：
 
-- Bridge registry 服务。
-- Instance -> bridge 绑定模型。
-- OAuth user -> instance relationship 模型。
+- Bridge registry 服务。字段草案已见 `13-bridge-registry-schema.md`。
+- Instance -> bridge 绑定模型。字段草案已见 `13-bridge-registry-schema.md`。
+- OAuth user -> instance relationship 模型。字段草案已见 `13-bridge-registry-schema.md`。
 - 控制面到多 bridge 的 token/secret 管理。
 - 多设备 health aggregation。
 - Session list cache 和超时降级策略。

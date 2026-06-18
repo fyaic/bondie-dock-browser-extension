@@ -67,7 +67,9 @@
 - [x] Phase 7C Control Plane contract：新增 `control-plane-contract.js` 和 `12-control-plane-contract.md`，冻结生产 API / payload / confirmation 规则。
 - [x] Phase 7C contract smoke 脚本：新增 `scripts/test-control-plane-contract.mjs`，后续可直接复跑。
 - [x] Phase 7C Control Plane adapter skeleton：新增 `control-plane-adapter.js`，支持 readiness、identity、instances、instance sessions、new/switch action 的 fake-fetch 验证。
-- [ ] 本地提交 Phase 7C Control Plane adapter skeleton。
+- [x] 本地提交 Phase 7C Control Plane adapter skeleton：`9b3fe96`。
+- [x] Phase 8 Bridge Registry schema：新增 `13-bridge-registry-schema.md`，拆清 instance、relationship、bridge、secret、binding、health snapshot。
+- [x] Phase 8 Device Onboarding checklist：新增 `14-device-onboarding-checklist.md`，整理设备安装、Tailscale、smoke、registry、回滚。
 
 ## Linear 树
 
@@ -177,8 +179,8 @@
 - [x] 文档冻结：Tailscale/private network 解决 control plane 到 bridge 的可达性，不等于用户有 session 权限。
 - [x] 文档冻结：bridge token 应保存在服务端 control plane，不默认下发到 extension。
 - [x] 文档冻结：当前 Mac mini bridge 是 legacy single-device reference。
-- [ ] 设计 bridge registry schema：instance id、bridge id、endpoint、health、capabilities。
-- [ ] 设计设备 onboarding checklist：OpenClaw、Tailscale、bridge、launchd/systemd、smoke。
+- [x] 设计 bridge registry schema：instance id、bridge id、endpoint、health、capabilities。
+- [x] 设计设备 onboarding checklist：OpenClaw、Tailscale、bridge、launchd/systemd、smoke。
 - [ ] 设计 multi-bridge health aggregation 和 readiness gate。
 - [x] 将 B `/v1/sessions` Gateway 504 性能修复拆为 B 侧依赖任务，并完成源码修复记录。
 
