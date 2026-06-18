@@ -46,6 +46,8 @@
 - [x] Bondie A/B/C 多实例默认用实例切换器 + 合集分组列表，不做侧栏三列并排。
 - [x] 浏览器默认不保存每台 Bondie bridge token；多设备默认走 control plane / registry。
 - [x] Tailscale/private network 只表示 control plane 到 bridge 可达，不表示用户有 session 权限。
+- [x] `sidePanel.sessions.list({ instanceId })` 不会把未知 instance 回退到 legacy 全量 sessions。
+- [x] fixture instance actions 返回 `fixture_read_only`，不触发真实 Bridge。
 
 ## 安全检查
 
@@ -113,4 +115,5 @@ test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/
 - [x] Real Session Bridge direct scope smoke can list scoped sessions.
 - [x] Chrome for Testing official Bridge gate renders 26 real sessions with no horizontal overflow.
 - [x] Phase 7A fixtures render Bondie A/B/C with correct visibility badges and disabled actions.
+- [x] Phase 7B message contract smoke covers legacy instance, unknown instance, fixture instance filter, and fixture action gate.
 - [ ] Real Google Chrome host permission gate approved and Side Panel renders latest local unpacked build in UI.

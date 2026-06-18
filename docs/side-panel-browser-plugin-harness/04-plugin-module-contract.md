@@ -83,6 +83,33 @@ sidePanel.settings.get
 sidePanel.settings.update
 ```
 
+Phase 7B 起，session message 支持 instance-level 参数：
+
+```js
+chrome.runtime.sendMessage({
+  type: 'sidePanel.sessions.list',
+  instanceId: 'bondie-b' // optional; "all" means aggregate
+});
+
+chrome.runtime.sendMessage({
+  type: 'sidePanel.sessions.new',
+  instanceId: 'legacy-session-bridge'
+});
+
+chrome.runtime.sendMessage({
+  type: 'sidePanel.sessions.switch',
+  instanceId: 'legacy-session-bridge',
+  sessionId: '<target-session-id>'
+});
+```
+
+约束：
+
+- `instanceId="all"` 只用于 list aggregate，不用于 new/switch。
+- legacy direct Bridge 只允许空 `instanceId` 或 `legacy-session-bridge`。
+- 未知 instance 返回 `instance_unavailable`，不回退到全局 sessions。
+- fixture instance action 返回 `fixture_read_only`，不调用真实 Bridge。
+
 建议响应形态：
 
 ```json
@@ -112,7 +139,7 @@ sidePanel.settings.update
 ```js
 export class OpenClawSessionAdapter {
   async status() {}
-  async listSessions(scope) {}
+  async listSessions(scope, options) {}
   async newConversation(scope, options) {}
   async switchSession(scope, sessionId, options) {}
   async sendSignal(scope, signal, payload) {}
@@ -123,6 +150,7 @@ export class OpenClawSessionAdapter {
 
 - `newConversation` 不接受 `sessionId`。
 - `switchSession` 必须接受 `sessionId`。
+- `options.instanceId` 只作为 instance-level 路由上下文；最终授权由服务端控制面或 adapter gate 判定。
 - adapter 返回原始 confirmation 字段，但 UI 通过统一 helper 判断完成态。
 
 ## Confirmation helper
@@ -208,3 +236,6 @@ export const openClawSidePanelModule = {
 - 未完成 OAuth 时返回 `identity_required`，不请求 session list。
 - 从属关系和沟通关系的 visibility policy 在 UI 中可区分。
 - 沟通关系不会展示非当前用户相关 sessions。
+- `sidePanel.sessions.list({ instanceId })` 只能返回该实例的 groups/sessions。
+- legacy adapter 对未知 `instanceId` 返回 `instance_unavailable`，不能回退展示全量。
+- fixture adapter 对 new/switch 返回 `fixture_read_only`。

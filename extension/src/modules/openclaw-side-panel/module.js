@@ -78,33 +78,45 @@ async function handleStatus({ context }) {
 
 async function handleNewSession({ message, context }) {
   const actionContext = await readActionContext(context);
-  if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
+  const instanceId = requestedInstanceId(message);
+  const instanceGate = deriveActionInstanceGate(actionContext, instanceId);
+  if (instanceGate !== 'ready') {
     return ok(buildBlockedActionPayload('new', {
       ...actionContext,
-      gate: 'fixture_read_only'
+      gate: instanceGate,
+      instanceId
     }));
   }
   if (actionContext.gate !== 'ready') {
-    return ok(buildBlockedActionPayload('new', actionContext));
+    return ok(buildBlockedActionPayload('new', {
+      ...actionContext,
+      instanceId
+    }));
   }
 
   const result = await createSessionAdapter(actionContext.config, context).newConversation(actionContext.scope, {
     messageCardStyle: message?.messageCardStyle || 'friendly'
   });
 
-  return ok(buildActionPayload('new', actionContext, result));
+  return ok(buildActionPayload('new', { ...actionContext, instanceId }, result));
 }
 
 async function handleSwitchSession({ message, context }) {
   const actionContext = await readActionContext(context);
-  if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
+  const instanceId = requestedInstanceId(message);
+  const instanceGate = deriveActionInstanceGate(actionContext, instanceId);
+  if (instanceGate !== 'ready') {
     return ok(buildBlockedActionPayload('switch', {
       ...actionContext,
-      gate: 'fixture_read_only'
+      gate: instanceGate,
+      instanceId
     }));
   }
   if (actionContext.gate !== 'ready') {
-    return ok(buildBlockedActionPayload('switch', actionContext));
+    return ok(buildBlockedActionPayload('switch', {
+      ...actionContext,
+      instanceId
+    }));
   }
 
   const result = await createSessionAdapter(actionContext.config, context).switchSession(
@@ -115,7 +127,7 @@ async function handleSwitchSession({ message, context }) {
     }
   );
 
-  return ok(buildActionPayload('switch', actionContext, result));
+  return ok(buildActionPayload('switch', { ...actionContext, instanceId }, result));
 }
 
 async function handleBridgeStatus({ context }) {
@@ -129,7 +141,7 @@ async function handleBridgeStatus({ context }) {
   });
 }
 
-async function handleListSessions({ context }) {
+async function handleListSessions({ message, context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
@@ -137,6 +149,7 @@ async function handleListSessions({ context }) {
   const scope = buildScope(config, identity, connection);
   const viewer = buildViewer(identity, connection);
   const gate = derivePanelState(module, connection, bridge);
+  const instanceId = requestedInstanceId(message);
 
   if (gate !== 'ready') {
     return ok({
@@ -147,18 +160,22 @@ async function handleListSessions({ context }) {
       instances: buildInstanceSummaries({ config, bridge, scope }),
       groups: [],
       sessions: [],
+      requestedInstanceId: instanceId,
       currentBinding: null,
       updatedAt: new Date().toISOString()
     });
   }
 
   if (config.sidePanelBondieFixtureMode === 'fixtures') {
-    return ok(buildFixtureSessionsPayload({ bridge, scope, viewer }));
+    return ok(filterSessionsPayloadByInstance(
+      buildFixtureSessionsPayload({ bridge, scope, viewer }),
+      instanceId
+    ));
   }
 
   const result = await createSessionAdapter(config, context).listSessions(scope);
   const grouped = buildLegacySessionGroups({ result, bridge, scope });
-  return ok({
+  return ok(filterSessionsPayloadByInstance({
     state: result.state,
     viewer,
     bridge: result.bridge ? mergeBridgeStatus(bridge, result.bridge) : bridge,
@@ -166,12 +183,13 @@ async function handleListSessions({ context }) {
     instances: grouped.instances,
     groups: grouped.groups,
     sessions: grouped.sessions,
+    requestedInstanceId: instanceId,
     currentBinding: result.currentBinding || null,
     bridgeId: result.bridgeId || bridge.remote?.bridgeId || '',
     unresolved: Boolean(result.unresolved),
     error: result.ok === false ? redactDiagnostic(result.message || result.error) : '',
     updatedAt: new Date().toISOString()
-  });
+  }, instanceId));
 }
 
 async function handleScopeCurrent({ context }) {
@@ -493,6 +511,52 @@ function buildFixtureSessionsPayload({ bridge, scope, viewer }) {
   };
 }
 
+function filterSessionsPayloadByInstance(payload, instanceId) {
+  const targetId = cleanString(instanceId);
+  if (!targetId) {
+    return payload;
+  }
+
+  const instances = Array.isArray(payload.instances) ? payload.instances : [];
+  const instanceExists = instances.some((instance) => instance.instance_id === targetId);
+  if (!instanceExists) {
+    return {
+      ...payload,
+      state: 'instance_unavailable',
+      requestedInstanceId: targetId,
+      instances: [],
+      groups: [],
+      sessions: [],
+      currentBinding: null,
+      unresolved: true,
+      error: 'instance_unavailable'
+    };
+  }
+
+  const groups = (payload.groups || []).filter((group) => group.instance_id === targetId);
+  const sessions = groups.flatMap((group) => group.sessions || []);
+  const sessionIds = new Set(sessions.flatMap((session) => [
+    cleanString(session.session_id),
+    cleanString(session.session_key)
+  ]).filter(Boolean));
+  const currentBinding = payload.currentBinding && (
+    sessionIds.has(cleanString(payload.currentBinding.session_id))
+      || sessionIds.has(cleanString(payload.currentBinding.session_key))
+  )
+    ? payload.currentBinding
+    : null;
+
+  return {
+    ...payload,
+    state: sessions.length ? payload.state : 'empty_sessions',
+    requestedInstanceId: targetId,
+    instances: instances.filter((instance) => instance.instance_id === targetId),
+    groups,
+    sessions,
+    currentBinding
+  };
+}
+
 function fixtureInstances() {
   return [
     {
@@ -620,6 +684,23 @@ function derivePanelState(module, connection, bridge) {
   return 'ready';
 }
 
+function requestedInstanceId(message) {
+  const payload = message?.payload && typeof message.payload === 'object' ? message.payload : {};
+  const value = cleanString(message?.instanceId) || cleanString(payload.instanceId);
+  return value === 'all' ? '' : value;
+}
+
+function deriveActionInstanceGate(actionContext, instanceId) {
+  if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
+    return 'fixture_read_only';
+  }
+  const targetId = cleanString(instanceId);
+  if (!targetId || targetId === 'legacy-session-bridge') {
+    return 'ready';
+  }
+  return 'instance_unavailable';
+}
+
 function createSessionAdapter(config, context) {
   return new OpenClawSessionAdapter({
     config,
@@ -631,6 +712,7 @@ function buildBlockedActionPayload(action, actionContext) {
   return {
     action,
     state: actionContext.gate,
+    instanceId: actionContext.instanceId || '',
     bridge: actionContext.bridge,
     scope: actionContext.scope,
     confirmed: false,
@@ -644,6 +726,7 @@ function buildActionPayload(action, actionContext, result) {
   return {
     action,
     state: result.state,
+    instanceId: actionContext.instanceId || '',
     bridge: result.bridge ? mergeBridgeStatus(actionContext.bridge, result.bridge) : actionContext.bridge,
     scope: actionContext.scope,
     confirmed: Boolean(result.result?.confirmed),

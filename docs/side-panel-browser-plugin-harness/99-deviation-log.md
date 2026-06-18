@@ -14,6 +14,9 @@
 - 偏差：系统 Google Chrome 自动化加载 unpacked extension 未观测到 service worker，若继续使用会误判扩展不可用。
   - 处理：切回 Playwright 自带 Chrome for Testing，并显式移除 `--disable-extensions` 默认参数；Phase 7A smoke 使用临时 extension copy、dummy Gateway online gate 和 official Bridge 完成验证。
 
+- 偏差：Phase 7A 虽然 UI 有实例切换器，但 background message 仍是隐式单 Bridge contract，后续 new/switch 容易继续依赖全局 legacy scope。
+  - 处理：Phase 7B 给 `sidePanel.sessions.list/new/switch` 增加 `instanceId`；legacy mode 对未知 instance 返回 `instance_unavailable`，fixture action 返回 `fixture_read_only`，UI 执行动作时携带当前可操作 instance id。
+
 ## 2026-06-17
 
 - 偏差：新需求从 OpenClaw 单实例升级为 Bondie 多实例，但分支仍停留在 `feature/openclaw-browser-side-panel-plugin`。

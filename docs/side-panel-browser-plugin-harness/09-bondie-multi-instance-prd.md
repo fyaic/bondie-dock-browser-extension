@@ -203,9 +203,16 @@ Phase 7A 已完成最小可运行闭环：
 
 - 生产 OAuth identity adapter。
 - 生产 permission-aware instances API。
-- `list/new/switch({ instanceId })` 的真实 instance-level contract。
+- Bondie Control Plane 的真实 instance-level `list/new/switch({ instanceId })` contract。
 - Control Plane、bridge registry、Tailscale/ACL 标准分发实现。
 - 未 OAuth、仅 pairing、无 relationship、沟通关系越权的完整自动化测试。
+
+Phase 7B 已完成扩展消息层的最小 contract：
+
+- `sidePanel.sessions.list({ instanceId })` 支持 legacy instance、fixtures instance 和 `all` aggregate。
+- legacy direct Bridge 只允许空 instance 或 `legacy-session-bridge`；未知 instance 返回 `instance_unavailable`。
+- fixture `new/switch({ instanceId })` 返回 `fixture_read_only`，不调用真实 Bridge。
+- Side Panel UI 执行 new/switch 时会带上当前可操作 instance id。
 
 ### Phase 7A: Fixture UI
 

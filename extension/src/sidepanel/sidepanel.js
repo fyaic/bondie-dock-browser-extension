@@ -76,6 +76,21 @@ const STATE_COPY = {
     title: '当前 scope 没有可用会话',
     summary: 'Bridge 没有返回当前浏览器 scope 可访问的 OpenClaw 会话。'
   },
+  identity_required: {
+    kicker: '等待身份',
+    title: '需要用户身份后才能读取会话',
+    summary: '设备配对不能替代用户身份；多 Bondie 权限需要 OAuth 或等价身份体系。'
+  },
+  permission_unresolved: {
+    kicker: '权限未解析',
+    title: '当前用户没有可用 Bondie 会话权限',
+    summary: '没有从属或沟通关系时，不展示任何 session。'
+  },
+  instance_unavailable: {
+    kicker: '实例不可用',
+    title: '所选 Bondie 暂不可用',
+    summary: '该实例不存在、未授权，或当前 adapter 不能访问它。'
+  },
   empty_sessions: {
     kicker: '空列表',
     title: '当前 scope 暂无会话',
@@ -321,7 +336,8 @@ async function requestNewSession() {
 
   await runSessionAction({
     type: 'sidePanel.sessions.new',
-    action: 'new'
+    action: 'new',
+    instanceId: selectedActionGroup()?.instance_id || ''
   });
 }
 
@@ -341,6 +357,7 @@ async function requestSwitchSession() {
   await runSessionAction({
     type: 'sidePanel.sessions.switch',
     action: 'switch',
+    instanceId: selectedActionGroup()?.instance_id || '',
     sessionId: sessionIdentity(selectedSession)
   });
 }
@@ -355,6 +372,7 @@ async function runSessionAction(message) {
   try {
     const response = await chrome.runtime.sendMessage({
       type: message.type,
+      instanceId: message.instanceId,
       sessionId: message.sessionId,
       messageCardStyle: 'friendly'
     });
@@ -1058,6 +1076,9 @@ function stateLabel(state) {
     bridge_permission_required: '待授权',
     bridge_unavailable: 'Bridge 异常',
     scope_unresolved: 'Scope 未解析',
+    identity_required: '待身份',
+    permission_unresolved: '权限未解析',
+    instance_unavailable: '实例不可用',
     empty_sessions: '空列表',
     ready: 'Ready',
     loading_sessions: '加载中',
@@ -1070,7 +1091,7 @@ function statusTone(state) {
   if (state === 'ready') {
     return 'online';
   }
-  if (state === 'missing_config' || state === 'offline' || state === 'bridge_permission_required' || state === 'empty_sessions' || state === 'scope_unresolved') {
+  if (state === 'missing_config' || state === 'offline' || state === 'bridge_permission_required' || state === 'empty_sessions' || state === 'scope_unresolved' || state === 'identity_required' || state === 'permission_unresolved' || state === 'instance_unavailable') {
     return 'paired';
   }
   if (state === 'booting' || state === 'loading_sessions') {
@@ -1187,6 +1208,9 @@ function sessionsEmptyText(state, error) {
     bridge_permission_required: '授权 Bridge 地址后再加载会话',
     bridge_unavailable: 'Session Bridge 暂不可达',
     scope_unresolved: '当前 scope 未解析到可访问会话',
+    identity_required: '完成用户身份识别后再加载会话',
+    permission_unresolved: '当前用户没有可展示的 Bondie 会话权限',
+    instance_unavailable: '所选 Bondie 暂不可用或当前 adapter 不支持',
     empty_sessions: '当前 scope 暂无历史会话',
     ready: '当前 scope 暂无历史会话'
   };
