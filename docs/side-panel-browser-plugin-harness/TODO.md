@@ -245,6 +245,7 @@
 - [x] Phase 8 health projection smoke：Control Plane instance normalizer 保留 health 摘要，degraded instance 默认禁用 actions。
 - [x] Phase 8 negative readiness smoke：401、disabled action 和 stale health 均 fail closed。
 - [x] 本地提交 readiness negative tests：`d4ff262`。
+- [x] Provider-neutral OAuth token interface：新增 `17-oauth-token-interface.md`，冻结 background/context/adapter token 边界和 fail-closed 状态。
 
 ## 待确认
 
