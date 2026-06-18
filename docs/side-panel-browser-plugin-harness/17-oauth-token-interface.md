@@ -72,6 +72,18 @@ context.getSidePanelOAuthToken = async () => ({
 | `token_refresh_failed` | refresh 失败 | 显示重新登录入口 |
 | `provider_unconfigured` | provider 未配置 | 保持 fail closed |
 
+已落地 helper：
+
+- `extension/src/modules/openclaw-side-panel/oauth-token-contract.js`
+- `normalizeOAuthTokenState(payload, { now })`
+- `publicOAuthTokenState(tokenState)`
+
+约束：
+
+- `authenticated` 必须有 access token。
+- token 过期会转为 `token_expired`。
+- public state 永远不包含 access token。
+
 ## Adapter Wiring
 
 `BondieControlPlaneAdapter` 已支持 provider-neutral token callback：
@@ -174,7 +186,7 @@ Side Panel 可以出现：
 ## 下一步实现顺序
 
 1. 在 background context 增加 `getSidePanelOAuthToken` stub，默认返回 `provider_unconfigured`。已完成。
-2. 增加 provider-neutral token state normalizer 和 tests。
+2. 增加 provider-neutral token state normalizer 和 tests。已完成。
 3. 选择 OAuth provider 后接入 PKCE login flow。
 4. 将 `BondieControlPlaneAdapter` 接入 `module.js`，但只在 OAuth authenticated 后启用。
 5. Chrome for Testing 验证未登录、登录、refresh failed、logout 四条路径。

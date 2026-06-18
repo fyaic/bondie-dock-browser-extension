@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { BondieControlPlaneAdapter } from '../extension/src/modules/openclaw-side-panel/control-plane-adapter.js';
 import { openClawSidePanelModule } from '../extension/src/modules/openclaw-side-panel/module.js';
 import {
+  normalizeOAuthTokenState,
+  publicOAuthTokenState
+} from '../extension/src/modules/openclaw-side-panel/oauth-token-contract.js';
+import {
   CONTROL_PLANE_ENDPOINTS,
   buildControlPlaneHeaders,
   buildControlPlaneUrl,
@@ -106,6 +110,53 @@ const staleInstancesPayload = normalizeControlPlaneInstancesPayload({
 assert.equal(staleInstancesPayload.instances.length, 1);
 assert.equal(staleInstancesPayload.instances[0].health.stale, true);
 assert.equal(staleInstancesPayload.instances[0].actions_enabled, false);
+
+const now = new Date('2026-06-18T09:00:00Z');
+const authenticatedToken = normalizeOAuthTokenState({
+  state: 'authenticated',
+  provider: 'openclaw',
+  accessToken: 'redacted-token',
+  expiresAt: '2026-06-18T09:10:00Z',
+  viewer: {
+    user_id: 'veil',
+    display_name: 'Veil'
+  }
+}, { now });
+assert.equal(authenticatedToken.authenticated, true);
+assert.equal(authenticatedToken.accessToken, 'redacted-token');
+assert.equal(authenticatedToken.expiresSoon, false);
+assert.equal(publicOAuthTokenState(authenticatedToken).accessToken, undefined);
+
+const expiringToken = normalizeOAuthTokenState({
+  state: 'authenticated',
+  accessToken: 'redacted-token',
+  expiresAt: '2026-06-18T09:03:00Z',
+  viewer: {
+    user_id: 'veil'
+  }
+}, { now });
+assert.equal(expiringToken.authenticated, true);
+assert.equal(expiringToken.expiresSoon, true);
+
+const expiredToken = normalizeOAuthTokenState({
+  state: 'authenticated',
+  accessToken: 'redacted-token',
+  expiresAt: '2026-06-18T08:59:00Z',
+  viewer: {
+    user_id: 'veil'
+  }
+}, { now });
+assert.equal(expiredToken.state, 'token_expired');
+assert.equal(expiredToken.accessToken, '');
+
+const missingAccessToken = normalizeOAuthTokenState({
+  state: 'authenticated',
+  viewer: {
+    user_id: 'veil'
+  }
+}, { now });
+assert.equal(missingAccessToken.state, 'identity_required');
+assert.equal(missingAccessToken.accessToken, '');
 
 assert.equal(
   CONTROL_PLANE_ENDPOINTS.instanceSessions('bondie/b'),

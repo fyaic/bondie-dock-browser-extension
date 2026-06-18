@@ -101,6 +101,7 @@ test ! -f "extension/src/pattern-memory.js" || node --check "extension/src/patte
 test ! -f "extension/src/modules/openclaw-side-panel/contract.js" || node --check "extension/src/modules/openclaw-side-panel/contract.js"
 test ! -f "extension/src/modules/openclaw-side-panel/control-plane-adapter.js" || node --check "extension/src/modules/openclaw-side-panel/control-plane-adapter.js"
 test ! -f "extension/src/modules/openclaw-side-panel/control-plane-contract.js" || node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"
+test ! -f "extension/src/modules/openclaw-side-panel/oauth-token-contract.js" || node --check "extension/src/modules/openclaw-side-panel/oauth-token-contract.js"
 test ! -f "extension/src/modules/openclaw-side-panel/session-adapter.js" || node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"
 test ! -f "extension/src/modules/openclaw-side-panel/module.js" || node --check "extension/src/modules/openclaw-side-panel/module.js"
 test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/sidepanel/sidepanel.js"
