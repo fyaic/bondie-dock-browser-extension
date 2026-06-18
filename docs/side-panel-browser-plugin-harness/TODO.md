@@ -65,7 +65,8 @@
 - [x] Phase 7B identity gate：新增 `sidePanelIdentityMode`，`legacy-paired` 保留真实 Bridge 路径，`oauth` 在 adapter 未接入前 fail closed 为 `identity_required`。
 - [x] Phase 7B provider gate：新增 `sidePanelInstanceProvider`，`legacy-session-bridge` 保留真实 Bridge 路径，`bondie-control-plane` 在 OAuth/control-plane adapter 未接入前 fail closed，不回退 legacy sessions。
 - [x] Phase 7C Control Plane contract：新增 `control-plane-contract.js` 和 `12-control-plane-contract.md`，冻结生产 API / payload / confirmation 规则。
-- [ ] 本地提交 Phase 7C Control Plane contract。
+- [x] Phase 7C contract smoke 脚本：新增 `scripts/test-control-plane-contract.mjs`，后续可直接复跑。
+- [ ] 本地提交 Phase 7C contract smoke 脚本。
 
 ## Linear 树
 
@@ -232,6 +233,7 @@
 - [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"`。
 - [x] Phase 7C diff hygiene：`git diff --check`。
 - [x] Phase 7C contract smoke：normalize A/B/C instances、过滤无效权限、保留 Control Plane URL path prefix、session 补充 instance metadata、new/switch confirmation gate。
+- [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`。
 
 ## 待确认
 

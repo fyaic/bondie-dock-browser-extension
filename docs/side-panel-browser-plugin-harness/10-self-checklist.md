@@ -103,6 +103,7 @@ test ! -f "extension/src/modules/openclaw-side-panel/control-plane-contract.js" 
 test ! -f "extension/src/modules/openclaw-side-panel/session-adapter.js" || node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"
 test ! -f "extension/src/modules/openclaw-side-panel/module.js" || node --check "extension/src/modules/openclaw-side-panel/module.js"
 test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/sidepanel/sidepanel.js"
+test ! -f "scripts/test-control-plane-contract.mjs" || node "scripts/test-control-plane-contract.mjs"
 ./scripts/package-extension.sh
 ```
 
