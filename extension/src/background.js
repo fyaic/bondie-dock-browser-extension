@@ -7,6 +7,9 @@ import {
   SIDE_PANEL_DEFAULT_CONFIG,
   openClawSidePanelModule
 } from './modules/openclaw-side-panel/module.js';
+import {
+  normalizeOAuthTokenState
+} from './modules/openclaw-side-panel/oauth-token-contract.js';
 
 const DEFAULT_CONFIG = {
   gatewayUrl: '',
@@ -296,13 +299,13 @@ async function maybeHandleFeatureModuleMessage(message, sender) {
 }
 
 async function getSidePanelOAuthToken() {
-  return {
+  return normalizeOAuthTokenState({
     state: 'provider_unconfigured',
     accessToken: '',
     expiresAt: '',
     provider: '',
     viewer: null
-  };
+  });
 }
 
 async function getTrustedPairingState() {

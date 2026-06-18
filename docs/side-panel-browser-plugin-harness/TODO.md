@@ -248,6 +248,7 @@
 - [x] Provider-neutral OAuth token interface：新增 `17-oauth-token-interface.md`，冻结 background/context/adapter token 边界和 fail-closed 状态。
 - [x] Provider-neutral OAuth context stub：background feature module context 新增 `getSidePanelOAuthToken()`，默认 `provider_unconfigured`。
 - [x] Provider-neutral OAuth token normalizer：新增 `oauth-token-contract.js`，覆盖 authenticated、expiresSoon、token_expired、missing token 和 public state 脱敏。
+- [x] Background OAuth stub 已接入 `normalizeOAuthTokenState()`，避免手写 token state 漂移。
 
 ## 待确认
 
