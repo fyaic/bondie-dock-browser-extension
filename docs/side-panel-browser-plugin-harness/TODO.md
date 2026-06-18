@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 7C - Bondie Control Plane contract and adapter skeleton。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。2026-06-18 已完成 Phase 7A 最小可运行闭环：legacy 单 Bridge sessions 被包装为 `instances/groups`，fixture 模式展示 Bondie A/B/C，从属/沟通权限 badge 和合集/实例切换 UI，fixture new/switch fail closed。Phase 7B 已完成 message-level instance contract、identity gate 和 provider gate：默认 legacy-paired + legacy-session-bridge 保留现有路径，OAuth/control-plane mode 在 adapter 未接入前 fail closed 且不列 sessions。Phase 7C 已新增 Control Plane contract helper、文档和 adapter skeleton，冻结 endpoint、OAuth header、relationship/visibility 校验、sessions/action normalizer 与 fetch adapter 边界；当前 adapter 仍未接入 `module.js` runtime，下一步是 OAuth token provider 和 fail-closed 越权自动化测试。
+当前阶段：Phase 8 - Bondie bridge registry / health readiness documented, Control Plane adapter still runtime-gated。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8 文档侧已完成 bridge registry schema、device onboarding checklist、multi-bridge health/readiness gate；当前 `BondieControlPlaneAdapter` 仍未接入 `module.js` runtime，下一步是 provider-neutral OAuth token interface、Control Plane runtime wiring 预备和更多 Chrome 自动化回归。
 
 ## 已完成
 
@@ -244,6 +244,7 @@
 - [x] Phase 7C fail-closed smoke：message layer 在已配对但 `sidePanelIdentityMode=oauth` 时返回 `identity_required`，不列 sessions/instances，new action 不确认。
 - [x] Phase 8 health projection smoke：Control Plane instance normalizer 保留 health 摘要，degraded instance 默认禁用 actions。
 - [x] Phase 8 negative readiness smoke：401、disabled action 和 stale health 均 fail closed。
+- [x] 本地提交 readiness negative tests：`d4ff262`。
 
 ## 待确认
 
