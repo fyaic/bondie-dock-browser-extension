@@ -92,6 +92,17 @@
             </select>
           </label>
           <label>
+            Instance provider
+            <select id="sidePanelInstanceProvider">
+              <option value="legacy-session-bridge">Legacy Session Bridge</option>
+              <option value="bondie-control-plane">Bondie Control Plane</option>
+            </select>
+          </label>
+          <label>
+            Control Plane URL
+            <input id="sidePanelControlPlaneBaseUrl" placeholder="https://bondie.example.com">
+          </label>
+          <label>
             Session Bridge URL
             <input id="sessionBridgeBaseUrl" placeholder="http://127.0.0.1:8787">
           </label>

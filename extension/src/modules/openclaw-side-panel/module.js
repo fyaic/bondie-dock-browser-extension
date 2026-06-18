@@ -11,6 +11,8 @@ export const SIDE_PANEL_DEFAULT_CONFIG = {
   sessionBridgeTimeoutMs: 20000,
   sidePanelBondieFixtureMode: 'off',
   sidePanelIdentityMode: 'legacy-paired',
+  sidePanelInstanceProvider: 'legacy-session-bridge',
+  sidePanelControlPlaneBaseUrl: '',
   sidePanelWorkspaceId: 'default',
   sidePanelOrganization: 'default',
   sidePanelRouteType: 'browser',
@@ -52,16 +54,18 @@ async function handleStatus({ context }) {
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
   const identityState = buildIdentityState(config, identity, connection);
-  const bridge = identityState.authenticated
+  const instanceProvider = buildInstanceProviderState(config, identityState);
+  const bridge = shouldReadBridge(identityState, instanceProvider)
     ? await readBridgeStatus({ config, module, connection, context })
     : buildBridgeStatus(config, module.enabled);
   const scope = buildScope(config, identity, connection);
-  const state = derivePanelState(module, connection, bridge, identityState);
+  const state = derivePanelState(module, connection, bridge, identityState, instanceProvider);
 
   return ok({
     state,
     viewer: identityState.viewer,
     identity: publicIdentityState(identityState),
+    instanceProvider,
     module,
     connection,
     configuration: {
@@ -71,7 +75,7 @@ async function handleStatus({ context }) {
     },
     bridge,
     scope,
-    instances: buildInstanceSummaries({ config, bridge, scope, identityState }),
+    instances: buildInstanceSummaries({ config, bridge, scope, identityState, instanceProvider }),
     phase: {
       current: 'Phase 7: Bondie multi-instance permission UI',
       next: 'Phase 7B: Identity adapter and instance-level session contract'
@@ -150,11 +154,12 @@ async function handleListSessions({ message, context }) {
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
   const identityState = buildIdentityState(config, identity, connection);
-  const bridge = identityState.authenticated
+  const instanceProvider = buildInstanceProviderState(config, identityState);
+  const bridge = shouldReadBridge(identityState, instanceProvider)
     ? await readBridgeStatus({ config, module, connection, context })
     : buildBridgeStatus(config, module.enabled);
   const scope = buildScope(config, identity, connection);
-  const gate = derivePanelState(module, connection, bridge, identityState);
+  const gate = derivePanelState(module, connection, bridge, identityState, instanceProvider);
   const instanceId = requestedInstanceId(message);
 
   if (gate !== 'ready') {
@@ -162,9 +167,10 @@ async function handleListSessions({ message, context }) {
       state: gate,
       viewer: identityState.viewer,
       identity: publicIdentityState(identityState),
+      instanceProvider,
       bridge,
       scope,
-      instances: buildInstanceSummaries({ config, bridge, scope, identityState }),
+      instances: buildInstanceSummaries({ config, bridge, scope, identityState, instanceProvider }),
       groups: [],
       sessions: [],
       requestedInstanceId: instanceId,
@@ -186,6 +192,7 @@ async function handleListSessions({ message, context }) {
     state: result.state,
     viewer: identityState.viewer,
     identity: publicIdentityState(identityState),
+    instanceProvider,
     bridge: result.bridge ? mergeBridgeStatus(bridge, result.bridge) : bridge,
     scope,
     instances: grouped.instances,
@@ -229,16 +236,18 @@ async function handleInstancesList({ context }) {
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
   const identityState = buildIdentityState(config, identity, connection);
-  const bridge = identityState.authenticated
+  const instanceProvider = buildInstanceProviderState(config, identityState);
+  const bridge = shouldReadBridge(identityState, instanceProvider)
     ? await readBridgeStatus({ config, module, connection, context })
     : buildBridgeStatus(config, module.enabled);
   const scope = buildScope(config, identity, connection);
 
   return ok({
-    state: identityState.authenticated ? 'ready' : 'identity_required',
+    state: identityState.authenticated ? instanceProvider.state : 'identity_required',
     viewer: identityState.viewer,
     identity: publicIdentityState(identityState),
-    instances: buildInstanceSummaries({ config, bridge, scope, identityState }),
+    instanceProvider,
+    instances: buildInstanceSummaries({ config, bridge, scope, identityState, instanceProvider }),
     updatedAt: new Date().toISOString()
   });
 }
@@ -258,6 +267,8 @@ async function handleSettingsGet({ context }) {
       sessionBridgeTimeoutMs: bridge.timeoutMs,
       sidePanelBondieFixtureMode: config.sidePanelBondieFixtureMode,
       sidePanelIdentityMode: config.sidePanelIdentityMode,
+      sidePanelInstanceProvider: config.sidePanelInstanceProvider,
+      sidePanelControlPlaneBaseUrlConfigured: Boolean(config.sidePanelControlPlaneBaseUrl),
       sidePanelWorkspaceId: config.sidePanelWorkspaceId,
       sidePanelOrganization: config.sidePanelOrganization,
       sidePanelRouteType: config.sidePanelRouteType,
@@ -288,7 +299,8 @@ async function readActionContext(context) {
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
   const identityState = buildIdentityState(config, identity, connection);
-  const bridge = identityState.authenticated
+  const instanceProvider = buildInstanceProviderState(config, identityState);
+  const bridge = shouldReadBridge(identityState, instanceProvider)
     ? await readBridgeStatus({ config, module, connection, context })
     : buildBridgeStatus(config, module.enabled);
   const scope = buildScope(config, identity, connection);
@@ -298,9 +310,10 @@ async function readActionContext(context) {
     module,
     connection,
     identity: identityState,
+    instanceProvider,
     bridge,
     scope,
-    gate: derivePanelState(module, connection, bridge, identityState)
+    gate: derivePanelState(module, connection, bridge, identityState, instanceProvider)
   };
 }
 
@@ -317,6 +330,8 @@ function normalizeConfig(storedConfig) {
   config.sessionBridgeTimeoutMs = normalizeTimeout(config.sessionBridgeTimeoutMs);
   config.sidePanelBondieFixtureMode = cleanString(config.sidePanelBondieFixtureMode) === 'fixtures' ? 'fixtures' : 'off';
   config.sidePanelIdentityMode = normalizeIdentityMode(config.sidePanelIdentityMode);
+  config.sidePanelInstanceProvider = normalizeInstanceProvider(config.sidePanelInstanceProvider);
+  config.sidePanelControlPlaneBaseUrl = cleanString(config.sidePanelControlPlaneBaseUrl);
   config.sidePanelWorkspaceId = cleanString(config.sidePanelWorkspaceId) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelWorkspaceId;
   config.sidePanelOrganization = cleanString(config.sidePanelOrganization) || config.sidePanelWorkspaceId;
   config.sidePanelRouteType = normalizeRouteType(config.sidePanelRouteType);
@@ -477,8 +492,57 @@ function publicIdentityState(identityState) {
   };
 }
 
-function buildInstanceSummaries({ config, bridge, scope, identityState }) {
+function buildInstanceProviderState(config, identityState) {
+  if (config.sidePanelBondieFixtureMode === 'fixtures') {
+    return {
+      provider: 'fixtures',
+      state: 'ready',
+      ready: true,
+      reason: ''
+    };
+  }
+  if (config.sidePanelInstanceProvider === 'bondie-control-plane') {
+    if (identityState.mode !== 'oauth' || !identityState.authenticated) {
+      return {
+        provider: 'bondie-control-plane',
+        state: 'identity_required',
+        ready: false,
+        reason: 'control_plane_requires_oauth'
+      };
+    }
+    if (!config.sidePanelControlPlaneBaseUrl) {
+      return {
+        provider: 'bondie-control-plane',
+        state: 'permission_unresolved',
+        ready: false,
+        reason: 'control_plane_not_configured'
+      };
+    }
+    return {
+      provider: 'bondie-control-plane',
+      state: 'permission_unresolved',
+      ready: false,
+      reason: 'control_plane_adapter_not_implemented'
+    };
+  }
+
+  return {
+    provider: 'legacy-session-bridge',
+    state: 'ready',
+    ready: true,
+    reason: ''
+  };
+}
+
+function shouldReadBridge(identityState, instanceProvider) {
+  return Boolean(identityState.authenticated && instanceProvider.provider === 'legacy-session-bridge');
+}
+
+function buildInstanceSummaries({ config, bridge, scope, identityState, instanceProvider }) {
   if (identityState && !identityState.authenticated) {
+    return [];
+  }
+  if (instanceProvider && !instanceProvider.ready) {
     return [];
   }
   if (config.sidePanelBondieFixtureMode === 'fixtures') {
@@ -713,7 +777,7 @@ function fixtureSessionsFor(instance) {
   ];
 }
 
-function derivePanelState(module, connection, bridge, identityState) {
+function derivePanelState(module, connection, bridge, identityState, instanceProvider) {
   if (!module.enabled) {
     return 'disabled';
   }
@@ -725,6 +789,9 @@ function derivePanelState(module, connection, bridge, identityState) {
   }
   if (identityState && !identityState.authenticated) {
     return 'identity_required';
+  }
+  if (instanceProvider && !instanceProvider.ready) {
+    return instanceProvider.state || 'permission_unresolved';
   }
   if (!bridge.configured) {
     return 'missing_config';
@@ -748,6 +815,9 @@ function requestedInstanceId(message) {
 }
 
 function deriveActionInstanceGate(actionContext, instanceId) {
+  if (actionContext.instanceProvider && !actionContext.instanceProvider.ready) {
+    return actionContext.instanceProvider.state || 'permission_unresolved';
+  }
   if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
     return 'fixture_read_only';
   }
@@ -820,6 +890,11 @@ function normalizeRouteType(value) {
 function normalizeIdentityMode(value) {
   const mode = cleanString(value) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelIdentityMode;
   return mode === 'oauth' ? 'oauth' : SIDE_PANEL_DEFAULT_CONFIG.sidePanelIdentityMode;
+}
+
+function normalizeInstanceProvider(value) {
+  const provider = cleanString(value) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelInstanceProvider;
+  return provider === 'bondie-control-plane' ? 'bondie-control-plane' : SIDE_PANEL_DEFAULT_CONFIG.sidePanelInstanceProvider;
 }
 
 function cleanString(value) {

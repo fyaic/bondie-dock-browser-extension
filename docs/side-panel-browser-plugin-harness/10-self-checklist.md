@@ -49,6 +49,7 @@
 - [x] `sidePanel.sessions.list({ instanceId })` 不会把未知 instance 回退到 legacy 全量 sessions。
 - [x] fixture instance actions 返回 `fixture_read_only`，不触发真实 Bridge。
 - [x] `sidePanelIdentityMode=oauth` 时未接入 OAuth adapter 前返回 `identity_required`，不列 sessions/instances。
+- [x] `sidePanelInstanceProvider=bondie-control-plane` 时未接入 control-plane adapter 前不回退 legacy sessions。
 
 ## 安全检查
 
@@ -118,4 +119,5 @@ test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/
 - [x] Phase 7A fixtures render Bondie A/B/C with correct visibility badges and disabled actions.
 - [x] Phase 7B message contract smoke covers legacy instance, unknown instance, fixture instance filter, and fixture action gate.
 - [x] Phase 7B identity gate smoke covers legacy-paired happy path and oauth fail-closed path.
+- [x] Phase 7B provider gate smoke covers legacy-session-bridge happy path and bondie-control-plane fail-closed path.
 - [ ] Real Google Chrome host permission gate approved and Side Panel renders latest local unpacked build in UI.

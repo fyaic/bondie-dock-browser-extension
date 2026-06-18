@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 7B - extension message-level instance contract and identity gate started。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。2026-06-18 已完成 Phase 7A 最小可运行闭环：legacy 单 Bridge sessions 被包装为 `instances/groups`，fixture 模式展示 Bondie A/B/C，从属/沟通权限 badge 和合集/实例切换 UI，fixture new/switch fail closed。Phase 7B 已开始：`sidePanel.sessions.list/new/switch` 支持 `instanceId` message contract，legacy 未知实例 fail closed，fixture action 返回 `fixture_read_only`；新增 `sidePanelIdentityMode`，默认 legacy-paired 保留现有路径，OAuth mode 在 adapter 未接入前返回 `identity_required` 且不列 sessions。下一步继续 permission-aware instances API 和 control plane 设计实现。
+当前阶段：Phase 7B - extension message-level instance contract, identity gate, and provider gate started。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。2026-06-18 已完成 Phase 7A 最小可运行闭环：legacy 单 Bridge sessions 被包装为 `instances/groups`，fixture 模式展示 Bondie A/B/C，从属/沟通权限 badge 和合集/实例切换 UI，fixture new/switch fail closed。Phase 7B 已开始：`sidePanel.sessions.list/new/switch` 支持 `instanceId` message contract，legacy 未知实例 fail closed，fixture action 返回 `fixture_read_only`；新增 `sidePanelIdentityMode` 和 `sidePanelInstanceProvider`，默认 legacy-paired + legacy-session-bridge 保留现有路径，OAuth/control-plane mode 在 adapter 未接入前 fail closed 且不列 sessions。下一步继续真实 OAuth/control plane API contract 和越权自动化测试。
 
 ## 已完成
 
@@ -63,6 +63,7 @@
 - [x] Phase 7A Chrome for Testing fixture smoke：Bondie A/B/C 三实例、4 个 fixture session cards、4 个 instance chips、3 个 groups、从属 `查看全部` / 沟通 `仅相关` badge 可见、new/switch disabled、Bondie B chip 过滤后 1 个 session、无横向溢出。截图：`/tmp/openclaw-sidepanel-phase7-fixtures-20260618-v3.png`。
 - [x] Phase 7B message contract smoke：`list({instanceId:"legacy-session-bridge"})` 返回 26 个真实 sessions；`list({instanceId:"bondie-b"})` 在 legacy mode 返回 `instance_unavailable`；fixture `list({instanceId:"bondie-b"})` 返回 1 个 session；fixture `new({instanceId:"bondie-b"})` 返回 `fixture_read_only`。
 - [x] Phase 7B identity gate：新增 `sidePanelIdentityMode`，`legacy-paired` 保留真实 Bridge 路径，`oauth` 在 adapter 未接入前 fail closed 为 `identity_required`。
+- [x] Phase 7B provider gate：新增 `sidePanelInstanceProvider`，`legacy-session-bridge` 保留真实 Bridge 路径，`bondie-control-plane` 在 OAuth/control-plane adapter 未接入前 fail closed，不回退 legacy sessions。
 - [ ] 本地提交 Phase 5/6/6.7/7A side panel + Bondie harness + Session Bridge 修复关联文档。
 
 ## Linear 树
@@ -161,6 +162,7 @@
 - [ ] 设计 permitted instances adapter：生产 `sidePanel.instances.list`。
 - [x] 设计并实现 extension message-level instance contract：`list/new/switch({ instanceId })`。
 - [x] 新增 identity mode gate：`legacy-paired` / `oauth`，OAuth mode 未接入 adapter 前 fail closed。
+- [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`，control-plane mode 未接入 adapter 前 fail closed。
 - [ ] 设计 production control-plane instance API：`list/new/switch({ instanceId })`。
 - [ ] 增加 fail-closed tests：未 OAuth、仅 pairing、无 relationship、沟通关系越权。
 
@@ -224,6 +226,7 @@
 - [x] Phase 7A Chrome for Testing fixtures smoke：Bondie A/B/C，4 sessions，3 groups，权限 badge，可切换 Bondie B，fixture actions disabled，Options `Bondie preview` 可配置，无横向溢出。截图：`/tmp/openclaw-sidepanel-phase7-fixtures-20260618-v3.png`。
 - [x] Phase 7B Chrome for Testing message contract smoke：legacy instance list 26 sessions；legacy unknown instance `instance_unavailable`；fixture Bondie B list 1 session；fixture Bondie B new action `fixture_read_only`。
 - [x] Phase 7B Chrome for Testing identity gate smoke：默认 `legacy-paired` 可加载 26 sessions；切换 `sidePanelIdentityMode=oauth` 后 `sidePanel.status` 为 `identity_required`，sessions/instances 均为空。
+- [x] Phase 7B Chrome for Testing provider gate smoke：默认 `legacy-session-bridge` 可加载 26 sessions；切换 `sidePanelInstanceProvider=bondie-control-plane` 后 `sidePanel.status` 为 `identity_required`，sessions/instances 均为空，new action 返回 `identity_required`。
 
 ## 待确认
 

@@ -1221,12 +1221,16 @@ function diagnosticsText(payload) {
   const connection = payload.connection || {};
   const bridge = payload.bridge || {};
   const identity = payload.identity || {};
+  const instanceProvider = payload.instanceProvider || {};
   const lines = [
     `state: ${payload.state || 'unknown'}`,
     `module: ${payload.module?.id || 'openclaw-side-panel'}`,
     `identity_mode: ${identity.mode || 'legacy-paired'}`,
     `identity_authenticated: ${Boolean(identity.authenticated)}`,
     `identity_reason: ${redactText(identity.reason || 'none')}`,
+    `instance_provider: ${instanceProvider.provider || 'legacy-session-bridge'}`,
+    `instance_provider_ready: ${Boolean(instanceProvider.ready)}`,
+    `instance_provider_reason: ${redactText(instanceProvider.reason || 'none')}`,
     `adapter: ${bridge.adapter || 'session-bridge'}`,
     `bridge_state: ${bridge.state || 'unknown'}`,
     `bridge_available: ${Boolean(bridge.available)}`,
