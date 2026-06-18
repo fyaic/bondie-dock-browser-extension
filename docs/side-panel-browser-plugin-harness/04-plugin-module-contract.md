@@ -23,7 +23,8 @@ extension/
 │   │       ├── module.js
 │   │       ├── session-adapter.js
 │   │       ├── contract.js
-│   │       └── control-plane-contract.js
+│   │       ├── control-plane-contract.js
+│   │       └── control-plane-adapter.js
 │   └── sidepanel/
 │       ├── sidepanel.html
 │       ├── sidepanel.js
@@ -112,7 +113,8 @@ chrome.runtime.sendMessage({
 - fixture instance action 返回 `fixture_read_only`，不调用真实 Bridge。
 
 Phase 7C 起，生产 Bondie Control Plane contract 固化在
-`extension/src/modules/openclaw-side-panel/control-plane-contract.js`。当前只提供 endpoint builder、OAuth header builder、identity/instances/sessions/action payload normalizer，不接入真实网络 adapter。
+`extension/src/modules/openclaw-side-panel/control-plane-contract.js`。Control Plane fetch 边界固化在
+`extension/src/modules/openclaw-side-panel/control-plane-adapter.js`。当前 adapter skeleton 可用 fake fetch 验证 readiness、identity、instances、sessions、new/switch action，但还没有接入 `module.js` runtime。
 
 Control Plane endpoint 草案：
 
@@ -131,6 +133,7 @@ POST /v1/bondie-instances/{instance_id}/sessions/switch
 - relationship / visibility 缺失或不匹配时 fail closed。
 - adapter 未接入前，`bondie-control-plane` provider 不允许 fallback 到 legacy Session Bridge。
 - new/switch 完成态只看 explicit confirmation 字段，不能只看 HTTP 200 或 `ok=true`。
+- 缺 Control Plane URL 或 OAuth token 时 adapter 不发请求。
 
 建议响应形态：
 

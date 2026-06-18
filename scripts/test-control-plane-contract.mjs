@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 
+import { BondieControlPlaneAdapter } from '../extension/src/modules/openclaw-side-panel/control-plane-adapter.js';
 import {
   CONTROL_PLANE_ENDPOINTS,
   buildControlPlaneHeaders,
@@ -107,8 +108,113 @@ assert.equal(isControlPlaneActionConfirmed({ ok: true }, 'new'), false);
 assert.equal(isControlPlaneActionConfirmed({ session_switch_confirmed: true }, 'switch'), true);
 assert.equal(isControlPlaneActionConfirmed({ route_switch_confirmed: true }, 'switch'), true);
 
+const calls = [];
+const adapter = new BondieControlPlaneAdapter({
+  config: {
+    sidePanelControlPlaneBaseUrl: 'https://bondie.example.com/api',
+    sidePanelControlPlaneTimeoutMs: 5000
+  },
+  accessToken: 'redacted-token',
+  fetchImpl: async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith('/api/v1/me')) {
+      return jsonResponse({
+        authenticated: true,
+        viewer: {
+          user_id: 'veil',
+          display_name: 'Veil'
+        }
+      });
+    }
+    if (url.endsWith('/api/v1/bondie-instances')) {
+      return jsonResponse({
+        instances: [
+          {
+            instance_id: 'bondie-a',
+            display_name: 'Bondie A',
+            relationship_type: 'subordinate',
+            visibility_policy: 'all_sessions',
+            status: 'online'
+          },
+          {
+            instance_id: 'bondie-b',
+            display_name: 'Bondie B',
+            relationship_type: 'communication',
+            visibility_policy: 'participant_sessions',
+            status: 'online'
+          },
+          {
+            instance_id: 'bad-escalation',
+            relationship_type: 'communication',
+            visibility_policy: 'all_sessions',
+            status: 'online'
+          }
+        ]
+      });
+    }
+    if (url.endsWith('/api/v1/bondie-instances/bondie-b/sessions')) {
+      return jsonResponse({
+        sessions: [
+          {
+            session_id: 'session-3',
+            title: 'Adapter session'
+          }
+        ]
+      });
+    }
+    if (url.endsWith('/api/v1/bondie-instances/bondie-a/sessions/new')) {
+      return jsonResponse({
+        new_conversation_confirmed: true,
+        session: {
+          session_id: 'session-4'
+        }
+      });
+    }
+    return jsonResponse({}, 404);
+  }
+});
+
+const missingUrl = await new BondieControlPlaneAdapter({ accessToken: 'redacted-token' }).listInstances();
+assert.equal(missingUrl.state, 'permission_unresolved');
+
+const missingToken = await new BondieControlPlaneAdapter({
+  config: { sidePanelControlPlaneBaseUrl: 'https://bondie.example.com' }
+}).listInstances();
+assert.equal(missingToken.state, 'identity_required');
+
+const adapterStatus = await adapter.status();
+assert.equal(adapterStatus.ok, true);
+assert.equal(adapterStatus.identity.viewer.user_id, 'veil');
+
+const adapterInstances = await adapter.listInstances();
+assert.equal(adapterInstances.instances.length, 2);
+
+const adapterSessions = await adapter.listSessions(adapterInstances.instances[1]);
+assert.equal(adapterSessions.sessions.length, 1);
+assert.equal(adapterSessions.sessions[0].instance_id, 'bondie-b');
+
+const missingSwitchTarget = await adapter.switchSession(adapterInstances.instances[1], '');
+assert.equal(missingSwitchTarget.state, 'missing_session_id');
+
+const adapterNewResult = await adapter.newConversation(adapterInstances.instances[0]);
+assert.equal(adapterNewResult.state, 'action_confirmed');
+assert.equal(adapterNewResult.result.confirmed, true);
+assert.equal(calls.length, 4);
+assert.ok(calls.every((call) => call.options.headers.Authorization === 'Bearer redacted-token'));
+assert.ok(calls.every((call) => call.url.startsWith('https://bondie.example.com/api/v1/')));
+
 console.log(JSON.stringify({
   ok: true,
   instances: instancesPayload.instances.length,
-  sessions: sessionsPayload.sessions.length
+  sessions: sessionsPayload.sessions.length,
+  adapterCalls: calls.length
 }));
+
+function jsonResponse(body, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body)
+  };
+}

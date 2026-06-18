@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 7C - Bondie Control Plane contract。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。2026-06-18 已完成 Phase 7A 最小可运行闭环：legacy 单 Bridge sessions 被包装为 `instances/groups`，fixture 模式展示 Bondie A/B/C，从属/沟通权限 badge 和合集/实例切换 UI，fixture new/switch fail closed。Phase 7B 已完成 message-level instance contract、identity gate 和 provider gate：默认 legacy-paired + legacy-session-bridge 保留现有路径，OAuth/control-plane mode 在 adapter 未接入前 fail closed 且不列 sessions。Phase 7C 已新增 Control Plane contract helper 和文档，冻结 endpoint、OAuth header、relationship/visibility 校验、sessions/action normalizer；当前仍未接真实 network adapter，下一步是 OAuth adapter、Control Plane fetch adapter 和越权自动化测试。
+当前阶段：Phase 7C - Bondie Control Plane contract and adapter skeleton。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。2026-06-18 已完成 Phase 7A 最小可运行闭环：legacy 单 Bridge sessions 被包装为 `instances/groups`，fixture 模式展示 Bondie A/B/C，从属/沟通权限 badge 和合集/实例切换 UI，fixture new/switch fail closed。Phase 7B 已完成 message-level instance contract、identity gate 和 provider gate：默认 legacy-paired + legacy-session-bridge 保留现有路径，OAuth/control-plane mode 在 adapter 未接入前 fail closed 且不列 sessions。Phase 7C 已新增 Control Plane contract helper、文档和 adapter skeleton，冻结 endpoint、OAuth header、relationship/visibility 校验、sessions/action normalizer 与 fetch adapter 边界；当前 adapter 仍未接入 `module.js` runtime，下一步是 OAuth token provider 和 fail-closed 越权自动化测试。
 
 ## 已完成
 
@@ -66,7 +66,8 @@
 - [x] Phase 7B provider gate：新增 `sidePanelInstanceProvider`，`legacy-session-bridge` 保留真实 Bridge 路径，`bondie-control-plane` 在 OAuth/control-plane adapter 未接入前 fail closed，不回退 legacy sessions。
 - [x] Phase 7C Control Plane contract：新增 `control-plane-contract.js` 和 `12-control-plane-contract.md`，冻结生产 API / payload / confirmation 规则。
 - [x] Phase 7C contract smoke 脚本：新增 `scripts/test-control-plane-contract.mjs`，后续可直接复跑。
-- [ ] 本地提交 Phase 7C contract smoke 脚本。
+- [x] Phase 7C Control Plane adapter skeleton：新增 `control-plane-adapter.js`，支持 readiness、identity、instances、instance sessions、new/switch action 的 fake-fetch 验证。
+- [ ] 本地提交 Phase 7C Control Plane adapter skeleton。
 
 ## Linear 树
 
@@ -167,6 +168,7 @@
 - [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`，control-plane mode 未接入 adapter 前 fail closed。
 - [x] 设计 production control-plane instance API：`list/new/switch({ instanceId })`。
 - [x] 新增 Control Plane contract helper：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer。
+- [x] 新增 Control Plane adapter skeleton：缺 URL/缺 token 不发请求，fake fetch 可验证生产 endpoint 和 confirmation gate。
 - [ ] 增加 fail-closed tests：未 OAuth、仅 pairing、无 relationship、沟通关系越权。
 
 ## Phase 8 Bondie 设备 Bridge 与标准分发草案
@@ -233,7 +235,8 @@
 - [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"`。
 - [x] Phase 7C diff hygiene：`git diff --check`。
 - [x] Phase 7C contract smoke：normalize A/B/C instances、过滤无效权限、保留 Control Plane URL path prefix、session 补充 instance metadata、new/switch confirmation gate。
-- [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`。
+- [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`，输出 `{"ok":true,"instances":2,"sessions":1,"adapterCalls":4}`。
+- [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-adapter.js"`。
 
 ## 待确认
 

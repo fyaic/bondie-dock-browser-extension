@@ -10,7 +10,7 @@
 - 当前用户能访问哪些 Bondie 实例：每个实例必须带 relationship 和 visibility policy。
 - 每个实例下可见 sessions 以及 new/switch action 的完成确认。
 
-当前分支只实现 contract helper：`extension/src/modules/openclaw-side-panel/control-plane-contract.js`。还没有接入真实网络 adapter；`sidePanelInstanceProvider=bondie-control-plane` 仍保持 fail closed。
+当前分支已实现 contract helper：`extension/src/modules/openclaw-side-panel/control-plane-contract.js`，以及 adapter skeleton：`extension/src/modules/openclaw-side-panel/control-plane-adapter.js`。adapter 目前只通过 fake fetch 脚本验证，还没有接入 `module.js` runtime；`sidePanelInstanceProvider=bondie-control-plane` 仍保持 fail closed。
 
 ## 不做什么
 
@@ -158,6 +158,22 @@ Control Plane 必须在服务端完成过滤。浏览器 helper 只做规范化�
 - `normalizeControlPlaneActionResult(payload, action, instanceContext)`
 - `isControlPlaneActionConfirmed(payload, action)`
 
+`control-plane-adapter.js` 导出：
+
+- `BondieControlPlaneAdapter`
+- `status()`
+- `listInstances()`
+- `listSessions(instanceContext)`
+- `newConversation(instanceContext, options)`
+- `switchSession(instanceContext, sessionId, options)`
+
+adapter readiness 规则：
+
+- 缺 `sidePanelControlPlaneBaseUrl`：返回 `permission_unresolved`，不发请求。
+- 缺 OAuth access token：返回 `identity_required`，不发请求。
+- 缺或无效 `instanceContext`：返回 `instance_unavailable`，不回退全局 route。
+- instance `actions_enabled=false`：new/switch 返回 `instance_action_unavailable`。
+
 规范化后的 session 会补充：
 
 - `instance_id`
@@ -182,6 +198,6 @@ Control Plane 必须在服务端完成过滤。浏览器 helper 只做规范化�
 ## 下一步
 
 1. 设计 OAuth token 获取与刷新 adapter。
-2. 设计 Control Plane fetch adapter，并只在 `sidePanelIdentityMode=oauth` 且 `sidePanelInstanceProvider=bondie-control-plane` 时启用。
+2. 接入 Control Plane fetch adapter，并只在 `sidePanelIdentityMode=oauth` 且 `sidePanelInstanceProvider=bondie-control-plane` 时启用。
 3. 增加越权测试：无 OAuth、仅 pairing、无 relationship、沟通关系枚举他人 session。
 4. 与服务端仓库对齐 endpoint 和 response schema。

@@ -215,7 +215,7 @@ Phase 7B 已完成扩展消息层的最小 contract：
 - Side Panel UI 执行 new/switch 时会带上当前可操作 instance id。
 - `sidePanelIdentityMode` 已落地：默认 `legacy-paired` 保留真实 Bridge 路径，`oauth` 模式在 OAuth adapter 未接入前返回 `identity_required`，不列 sessions/instances。
 - `sidePanelInstanceProvider` 已落地：默认 `legacy-session-bridge` 保留现有路径，`bondie-control-plane` 在 OAuth/control-plane adapter 未接入前 fail closed，不回退 legacy sessions。
-- Phase 7C 已固化 Control Plane contract helper：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer。当前不接真实网络 adapter，runtime 仍 fail closed。
+- Phase 7C 已固化 Control Plane contract helper 和 adapter skeleton：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer、fake-fetch 验证。当前 adapter 尚未接入 `module.js` runtime，runtime 仍 fail closed。
 
 ### Phase 7A: Fixture UI
 
@@ -244,6 +244,7 @@ Phase 7B 已完成扩展消息层的最小 contract：
 已落地文件：
 
 - `extension/src/modules/openclaw-side-panel/control-plane-contract.js`
+- `extension/src/modules/openclaw-side-panel/control-plane-adapter.js`
 - `docs/side-panel-browser-plugin-harness/12-control-plane-contract.md`
 
 ### Phase 8: Device Bridge Distribution
