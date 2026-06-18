@@ -246,6 +246,7 @@
 - [x] Phase 8 negative readiness smoke：401、disabled action 和 stale health 均 fail closed。
 - [x] 本地提交 readiness negative tests：`d4ff262`。
 - [x] Provider-neutral OAuth token interface：新增 `17-oauth-token-interface.md`，冻结 background/context/adapter token 边界和 fail-closed 状态。
+- [x] Provider-neutral OAuth context stub：background feature module context 新增 `getSidePanelOAuthToken()`，默认 `provider_unconfigured`。
 
 ## 待确认
 

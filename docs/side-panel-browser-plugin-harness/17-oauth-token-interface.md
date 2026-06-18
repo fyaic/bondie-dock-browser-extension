@@ -173,7 +173,7 @@ Side Panel 可以出现：
 
 ## 下一步实现顺序
 
-1. 在 background context 增加 `getSidePanelOAuthToken` stub，默认返回 `identity_required`。
+1. 在 background context 增加 `getSidePanelOAuthToken` stub，默认返回 `provider_unconfigured`。已完成。
 2. 增加 provider-neutral token state normalizer 和 tests。
 3. 选择 OAuth provider 后接入 PKCE login flow。
 4. 将 `BondieControlPlaneAdapter` 接入 `module.js`，但只在 OAuth authenticated 后启用。

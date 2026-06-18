@@ -289,9 +289,20 @@ async function maybeHandleFeatureModuleMessage(message, sender) {
       ensureHostIdentity,
       getConfig: (keys) => chrome.storage.local.get(keys),
       getConnectionStatus: () => ({ ...status }),
+      getSidePanelOAuthToken,
       getTrustedPairingState
     }
   });
+}
+
+async function getSidePanelOAuthToken() {
+  return {
+    state: 'provider_unconfigured',
+    accessToken: '',
+    expiresAt: '',
+    provider: '',
+    viewer: null
+  };
 }
 
 async function getTrustedPairingState() {
