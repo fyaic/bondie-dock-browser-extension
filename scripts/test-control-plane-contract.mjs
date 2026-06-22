@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { BondieControlPlaneAdapter } from '../extension/src/modules/openclaw-side-panel/control-plane-adapter.js';
 import { openClawSidePanelModule } from '../extension/src/modules/openclaw-side-panel/module.js';
 import {
+  buildSessionBridgeActionPayload,
+  buildSessionBridgeQuery
+} from '../extension/src/modules/openclaw-side-panel/contract.js';
+import {
   normalizeOAuthTokenState,
   publicOAuthTokenState
 } from '../extension/src/modules/openclaw-side-panel/oauth-token-contract.js';
@@ -157,6 +161,30 @@ const missingAccessToken = normalizeOAuthTokenState({
 }, { now });
 assert.equal(missingAccessToken.state, 'identity_required');
 assert.equal(missingAccessToken.accessToken, '');
+
+const subordinateScope = {
+  workspace_id: 'default',
+  organization: '弗忧联盟',
+  route_type: 'direct',
+  route_key: 'wo_test',
+  route_label: '周威',
+  device_id: 'host-1',
+  operator_id: 'Veil',
+  visibility_policy: 'all_sessions'
+};
+const subordinateBridgeQuery = buildSessionBridgeQuery(subordinateScope);
+assert.equal(subordinateBridgeQuery.visibility_policy, 'all_sessions');
+
+const communicationBridgeQuery = buildSessionBridgeQuery({
+  workspace_id: 'default',
+  route_type: 'direct',
+  route_key: 'wo_test',
+  route_label: '周威',
+  device_id: 'host-1',
+  operator_id: 'Veil'
+});
+assert.equal(communicationBridgeQuery.visibility_policy, 'participant_sessions');
+assert.equal(buildSessionBridgeActionPayload(subordinateScope, { sessionId: 'session-current' }).session_id, 'session-current');
 
 assert.equal(
   CONTROL_PLANE_ENDPOINTS.instanceSessions('bondie/b'),
@@ -348,6 +376,17 @@ assert.equal(moduleNewResult.ok, true);
 assert.equal(moduleNewResult.payload.state, 'identity_required');
 assert.equal(moduleNewResult.payload.confirmed, false);
 assert.equal(moduleNewResult.payload.instanceId, 'bondie-a');
+
+const subordinateLocalContext = createModuleContext({
+  sidePanelLocalRelationshipType: 'subordinate'
+});
+const subordinateLocalList = await openClawSidePanelModule.messages['sidePanel.sessions.list']({
+  message: {},
+  context: subordinateLocalContext
+});
+assert.equal(subordinateLocalList.ok, true);
+assert.equal(subordinateLocalList.payload.scope.visibility_policy, 'all_sessions');
+assert.equal(subordinateLocalList.payload.scope.relationship_type, 'subordinate');
 
 console.log(JSON.stringify({
   ok: true,

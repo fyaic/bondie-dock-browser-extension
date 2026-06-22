@@ -337,7 +337,8 @@ async function requestNewSession() {
   await runSessionAction({
     type: 'sidePanel.sessions.new',
     action: 'new',
-    instanceId: selectedActionGroup()?.instance_id || ''
+    instanceId: selectedActionGroup()?.instance_id || '',
+    sessionId: selectedSessionId || ''
   });
 }
 
@@ -737,7 +738,17 @@ function updateActionButtons(payload) {
 
 function canRunNewSession(payload = lastSessionsPayload || {}) {
   const state = payload.state || lastStatusPayload?.state;
-  return (state === 'ready' || state === 'empty_sessions') && Boolean(selectedActionGroup(payload));
+  const group = selectedActionGroup(payload);
+  if (!group) {
+    return false;
+  }
+  if (groupRequiresRouteSessionHint(group)) {
+    return state === 'ready'
+      && Boolean(selectedSessionId)
+      && Boolean(selectedSession)
+      && selectedSession.restorable !== false;
+  }
+  return state === 'ready' || state === 'empty_sessions';
 }
 
 function canRunSwitchSession(payload = lastSessionsPayload || {}) {
@@ -778,7 +789,17 @@ function updateSessionActionHint(payload, groups) {
     elements.actionHint.textContent = '先选择具体 Bondie，再执行新开或恢复会话';
     return;
   }
+  const group = selectedActionGroup(payload);
+  if (group && groupRequiresRouteSessionHint(group) && !selectedSessionId) {
+    elements.actionHint.textContent = '从属关系可查看全部；新开对话前先选择一条会话作为 route';
+    return;
+  }
   elements.actionHint.textContent = 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
+}
+
+function groupRequiresRouteSessionHint(group) {
+  const instance = group?.instance || {};
+  return instance.visibility_policy === 'all_sessions' || group?.visibility_policy === 'all_sessions';
 }
 
 function renderOperation(payload) {
@@ -1260,7 +1281,7 @@ function scopedSessionIdentity(session) {
 function relationshipLabel(type) {
   const labels = {
     subordinate: '个人私助',
-    communication: '沟通关系',
+    communication: '服务关系',
     legacy_direct: '当前 Bridge'
   };
   return labels[type] || '关系';

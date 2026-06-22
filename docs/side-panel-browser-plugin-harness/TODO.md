@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 8.5 - system boundary / repo split documented, Control Plane adapter still runtime-gated。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8 文档侧已完成 bridge registry schema、device onboarding checklist、multi-bridge health/readiness gate；Phase 8.5 已明确 Browser Side Panel / Bondie Control Plane / OpenClaw Session Bridge 的系统边界、独立仓库拆分和 bridge secret store 语义。当前 `BondieControlPlaneAdapter` 仍未接入 `module.js` runtime，下一步是等待登录授权系统文档后接 OAuth token provider，并预备 Control Plane runtime wiring 和更多 Chrome 自动化回归。
+当前阶段：Phase 9 - local Bondie visibility functional wiring。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 正在补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`，只显示 Veil/周威 route 相关 sessions。当前 `BondieControlPlaneAdapter` 仍未接入真实 OAuth runtime，后续等待登录授权系统文档后接 token provider。
 
 ## 已完成
 
@@ -73,6 +73,10 @@
 - [x] Phase 8 Multi-bridge health readiness：新增 `15-multi-bridge-health-readiness.md`，定义 health 聚合、readiness gate、UI 映射和告警。
 - [x] 当前工作现场 handoff：新增 `16-handoff-2026-06-18.md`，记录 commits、验证、未完成决策和禁止回退项。
 - [x] Phase 8.5 系统边界：新增 `18-system-boundary-and-repo-plan.md`，明确 Control Plane 是服务侧 API，不是浏览器 Side Panel 前端；建议独立维护标准 OpenClaw Session Bridge 仓库；解释 bridge secret store。
+- [x] Phase 9 本地 Bondie 权限功能：Options 增加 Local Bondie relationship；`communication` 映射 `participant_sessions`，`subordinate` 映射 `all_sessions`。
+- [x] Phase 9 本地全量会话：Browser Session Bridge query/action payload 携带 `visibility_policy`，B 侧 `/v1/sessions` 支持 `visibility_policy=all_sessions`。
+- [x] Phase 9 行为保护：全量模式下新开对话必须先选中一条 session 作为 route hint，避免模糊 new。
+- [x] Phase 9 本地验收口径：Options 中 `Local Bondie relationship=从属关系` 应看到本地 Bridge 全量 sessions；切回 `服务关系` 后使用 `Route key` scoped 查询，仅显示 Veil/周威这类当前用户 route 相关 sessions。
 
 ## Linear 树
 
@@ -170,7 +174,7 @@
 - [ ] 设计 permitted instances adapter：生产 `sidePanel.instances.list`。
 - [ ] 等待登录授权系统接入文档后，对齐 OAuth token provider 与 Control Plane `/v1/me`。
 - [x] 创建 private Session Bridge 远程仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`，本地 remote 名为 `fyaic`。
-- [x] 提交并 push Session Bridge 文档到 `fyaic/bondie-openclaw-session-bridge`，远端 `main` 为 `06ea5f5`。
+- [x] 提交并 push Session Bridge 文档到 `fyaic/bondie-openclaw-session-bridge`，远端 `main` 为 `9b02c95`。
 - [x] 设计并实现 extension message-level instance contract：`list/new/switch({ instanceId })`。
 - [x] 新增 identity mode gate：`legacy-paired` / `oauth`，OAuth mode 未接入 adapter 前 fail closed。
 - [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`，control-plane mode 未接入 adapter 前 fail closed。

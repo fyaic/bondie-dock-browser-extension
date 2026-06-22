@@ -16,17 +16,20 @@ export function buildSessionBridgeQuery(scope) {
     chat_label: routeLabel,
     operator_display_name: operatorId,
     operator_name: operatorId,
-    operator_alias: operatorId
+    operator_alias: operatorId,
+    visibility_policy: normalizeVisibilityPolicy(scope.visibility_policy)
   });
 }
 
 export function buildSessionBridgeActionPayload(scope, options = {}) {
   const payload = buildSessionBridgeQuery(scope);
   const messageCardStyle = cleanString(options.messageCardStyle || options.message_card_style) || 'friendly';
-  return {
+  const sessionId = cleanString(options.sessionId || options.session_id);
+  return compactObject({
     ...payload,
-    message_card_style: messageCardStyle
-  };
+    message_card_style: messageCardStyle,
+    session_id: sessionId
+  });
 }
 
 export function normalizeSessionsPayload(payload) {
@@ -141,6 +144,10 @@ function compactObject(value) {
     }
   }
   return next;
+}
+
+function normalizeVisibilityPolicy(value) {
+  return cleanString(value) === 'all_sessions' ? 'all_sessions' : 'participant_sessions';
 }
 
 function cleanString(value) {

@@ -12,6 +12,7 @@ export const SIDE_PANEL_DEFAULT_CONFIG = {
   sidePanelBondieFixtureMode: 'off',
   sidePanelIdentityMode: 'legacy-paired',
   sidePanelInstanceProvider: 'legacy-session-bridge',
+  sidePanelLocalRelationshipType: 'communication',
   sidePanelControlPlaneBaseUrl: '',
   sidePanelWorkspaceId: 'default',
   sidePanelOrganization: 'default',
@@ -103,7 +104,8 @@ async function handleNewSession({ message, context }) {
   }
 
   const result = await createSessionAdapter(actionContext.config, context).newConversation(actionContext.scope, {
-    messageCardStyle: message?.messageCardStyle || 'friendly'
+    messageCardStyle: message?.messageCardStyle || 'friendly',
+    sessionId: message?.sessionId
   });
 
   return ok(buildActionPayload('new', { ...actionContext, instanceId }, result));
@@ -268,6 +270,7 @@ async function handleSettingsGet({ context }) {
       sidePanelBondieFixtureMode: config.sidePanelBondieFixtureMode,
       sidePanelIdentityMode: config.sidePanelIdentityMode,
       sidePanelInstanceProvider: config.sidePanelInstanceProvider,
+      sidePanelLocalRelationshipType: config.sidePanelLocalRelationshipType,
       sidePanelControlPlaneBaseUrlConfigured: Boolean(config.sidePanelControlPlaneBaseUrl),
       sidePanelWorkspaceId: config.sidePanelWorkspaceId,
       sidePanelOrganization: config.sidePanelOrganization,
@@ -331,6 +334,7 @@ function normalizeConfig(storedConfig) {
   config.sidePanelBondieFixtureMode = cleanString(config.sidePanelBondieFixtureMode) === 'fixtures' ? 'fixtures' : 'off';
   config.sidePanelIdentityMode = normalizeIdentityMode(config.sidePanelIdentityMode);
   config.sidePanelInstanceProvider = normalizeInstanceProvider(config.sidePanelInstanceProvider);
+  config.sidePanelLocalRelationshipType = normalizeLocalRelationshipType(config.sidePanelLocalRelationshipType);
   config.sidePanelControlPlaneBaseUrl = cleanString(config.sidePanelControlPlaneBaseUrl);
   config.sidePanelWorkspaceId = cleanString(config.sidePanelWorkspaceId) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelWorkspaceId;
   config.sidePanelOrganization = cleanString(config.sidePanelOrganization) || config.sidePanelWorkspaceId;
@@ -448,6 +452,8 @@ function buildScope(config, identity, connection) {
     route_label: config.sidePanelRouteLabel,
     device_id: cleanString(identity.hostId) || connection.hostId,
     operator_id: config.sidePanelOperatorId || (connection.paired ? 'paired-browser-host' : 'unpaired'),
+    relationship_type: config.sidePanelLocalRelationshipType,
+    visibility_policy: localVisibilityPolicy(config.sidePanelLocalRelationshipType),
     source: 'browser-extension-side-panel'
   };
 }
@@ -573,14 +579,16 @@ function buildLegacySessionGroups({ result, bridge, scope }) {
 function buildLegacyInstance({ bridge, scope, bridgeId = '' }) {
   const remote = bridge.remote || {};
   const displayName = cleanString(remote.bridgeName) || 'OpenClaw Mac mini';
+  const relationshipType = cleanString(scope.relationship_type) || 'communication';
+  const visibilityPolicy = cleanString(scope.visibility_policy) || localVisibilityPolicy(relationshipType);
   return {
     instance_id: 'legacy-session-bridge',
     display_name: displayName,
     short_name: 'Mac mini',
-    relationship_type: 'legacy_direct',
-    relationship_label: '当前 Bridge',
-    visibility_policy: 'participant_sessions',
-    visibility_label: '仅相关',
+    relationship_type: relationshipType,
+    relationship_label: localRelationshipLabel(relationshipType),
+    visibility_policy: visibilityPolicy,
+    visibility_label: localVisibilityLabel(visibilityPolicy),
     status: bridge.available ? 'online' : bridge.state || 'unknown',
     bridge_id: cleanString(bridgeId) || cleanString(remote.bridgeId),
     route_label: scope.route_label,
@@ -895,6 +903,23 @@ function normalizeIdentityMode(value) {
 function normalizeInstanceProvider(value) {
   const provider = cleanString(value) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelInstanceProvider;
   return provider === 'bondie-control-plane' ? 'bondie-control-plane' : SIDE_PANEL_DEFAULT_CONFIG.sidePanelInstanceProvider;
+}
+
+function normalizeLocalRelationshipType(value) {
+  const relationshipType = cleanString(value) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelLocalRelationshipType;
+  return relationshipType === 'subordinate' ? 'subordinate' : SIDE_PANEL_DEFAULT_CONFIG.sidePanelLocalRelationshipType;
+}
+
+function localVisibilityPolicy(relationshipType) {
+  return relationshipType === 'subordinate' ? 'all_sessions' : 'participant_sessions';
+}
+
+function localRelationshipLabel(relationshipType) {
+  return relationshipType === 'subordinate' ? '从属关系' : '服务关系';
+}
+
+function localVisibilityLabel(visibilityPolicy) {
+  return visibilityPolicy === 'all_sessions' ? '查看全部' : '仅相关';
 }
 
 function cleanString(value) {
