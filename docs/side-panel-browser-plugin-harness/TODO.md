@@ -77,6 +77,8 @@
 - [x] Phase 9 本地全量会话：Browser Session Bridge query/action payload 携带 `visibility_policy`，B 侧 `/v1/sessions` 支持 `visibility_policy=all_sessions`。
 - [x] Phase 9 行为保护：全量模式下新开对话必须先选中一条 session 作为 route hint，避免模糊 new。
 - [x] Phase 9 本地验收口径：Options 中 `Local Bondie relationship=从属关系` 应看到本地 Bridge 全量 sessions；切回 `服务关系` 后使用 `Route key` scoped 查询，仅显示 Veil/周威这类当前用户 route 相关 sessions。
+- [x] Phase 9 正式 Bridge 部署验证：`100.79.143.105:8766` 已重启加载 B 侧 `03b12ff`；周威服务关系 scoped 返回 17 条，全量从属关系返回 50 条。
+- [x] Phase 9 人工体验入口：已打开本机 Chrome profile `Chrome OpenClaw Browser Host CFT RealBridge`，extension id `cljflebfgmekmnojaiaonfdjcmoonbpf`，当前 tabs 为 `src/options.html` 和 `src/sidepanel/sidepanel.html`。
 
 ## Linear 树
 

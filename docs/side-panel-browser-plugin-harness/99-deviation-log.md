@@ -120,6 +120,9 @@
 - 偏差：系统 Google Chrome 命令行加载 unpacked extension 的 profile 行为不稳定，存在历史 extension id / service worker 缓存干扰。
   - 处理：自动化验证以干净 Chrome for Testing profile 为准；给人工体验保留已打开的 Chrome 测试 profile，但最终发布前需要用户通过 `chrome://extensions` 手动 Load unpacked 或专项脚本复核。
 
+- 偏差：2026-06-22 Phase 9 系统 Chrome 自动化仍未稳定观测到 service worker，且 AppleScript 执行页面 JS 被 Chrome 安全设置关闭。
+  - 处理：不把系统 Chrome 自动化作为本轮硬 gate；已用 HTTP smoke 验证正式 Bridge 权限差异，用单测锁住 contract，并打开人工体验 profile `Chrome OpenClaw Browser Host CFT RealBridge` 供用户手动切换 `Local Bondie relationship` 验收。
+
 - 偏差：Chrome host permission 确认弹窗属于浏览器级 UI，CDP 点击 Side Panel 按钮后不能稳定自动点击“允许”。
   - 处理：手工 profile 已停在该确认弹窗；人工点击“允许”是当前唯一可信 gate。点击后无需重新配置，刷新 Side Panel 即可拉真实 Session Bridge sessions。
 
