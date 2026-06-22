@@ -12,6 +12,8 @@
 
 当前分支已实现 contract helper：`extension/src/modules/openclaw-side-panel/control-plane-contract.js`，以及 adapter skeleton：`extension/src/modules/openclaw-side-panel/control-plane-adapter.js`。adapter 目前只通过 fake fetch 脚本验证，还没有接入 `module.js` runtime；`sidePanelInstanceProvider=bondie-control-plane` 仍保持 fail closed。
 
+命名边界：Browser Side Panel 是本仓库的前端 UI；Bondie Control Plane 是服务侧 API / 控制面，不是 Side Panel 页面。Control Plane 内部再通过 bridge registry 和 bridge secret store 调用每台 Bondie 设备上的 OpenClaw Session Bridge。系统拆分见 `18-system-boundary-and-repo-plan.md`。
+
 ## 不做什么
 
 - 不让浏览器直连所有 Bondie 设备 bridge。

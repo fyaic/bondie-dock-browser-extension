@@ -17,6 +17,8 @@ Bondie device
 
 没有私网互联或可达的控制面，Side Panel 就拿不到该设备上的 session 信息。
 
+系统边界和独立仓库拆分见 `18-system-boundary-and-repo-plan.md`。本文件只覆盖每设备 bridge 的分发和接入，不把 Control Plane 当作浏览器前端。
+
 ## 当前已存在能力
 
 `openclaw-session-bridge` 已有：
@@ -115,6 +117,8 @@ Browser Extension
 ```
 
 Secrets such as `SESSION_BRIDGE_TOKEN` must remain server-side in the control plane or deployment secret store. The browser extension should not store tokens for every Bondie device.
+
+这里的 secret store 指服务端保存每台 bridge 调用凭证的位置，可以是开发期 `.env`、受限数据库中的 secret reference、Vault 或云 secret manager。它不是浏览器插件存储，也不应暴露给 Side Panel。
 
 ## Device Onboarding
 
@@ -243,3 +247,5 @@ POST bridge /v1/switch-session
 - Bondie control plane: OAuth、relationship、registry、bridge proxy、secret 管理。
 - Session Bridge: 每设备本地 adapter、Gateway 性能修复、metadata、标准分发。
 - OpenClaw Gateway: session list/restore/new 的正式能力和性能稳定性。
+
+Session Bridge 已创建 private 独立仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`。当前本地参考实现位于 `/Users/fuyo-aic/Projects/openclaw-session-bridge`，旧 remote 是 `https://github.com/veil-chow-fyaic/openclaw-session-bridge.git`，新 remote 名为 `fyaic`；本地提交和 push 仍按 git 操作确认节奏执行。

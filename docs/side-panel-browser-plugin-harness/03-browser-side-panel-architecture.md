@@ -2,6 +2,14 @@
 
 ## 目标架构
 
+命名边界必须保持稳定：
+
+- `Browser Side Panel` 是浏览器插件里的页面前端，负责实例切换、合集视图、会话列表和用户交互。
+- `Bondie Control Plane` 是服务侧 API / 控制面，负责 OAuth identity、relationship 权限、instance registry、bridge registry、secret 管理、health 聚合和 session proxy。
+- `OpenClaw Session Bridge` 是每台 Bondie/OpenClaw 设备旁边的本地服务，负责把本机 OpenClaw Gateway/session store 暴露成标准 HTTP API。
+
+Control Plane 未来可以有 admin dashboard，但它不是本仓库要实现的 Side Panel 前端。边界和仓库拆分见 `18-system-boundary-and-repo-plan.md`。
+
 ```text
 Browser Extension
 ├── extension core
@@ -177,6 +185,7 @@ instance_empty
 - 通过 OAuth user identity 获取用户可访问的班底实例。
 - 返回每个实例的 relationship type 和 visibility policy。
 - 将 subordinate / communication 的 session 可见性判定放在服务端，而不是浏览器 UI。
+- 从 bridge secret store 读取服务端 bridge token，调用每台 Bondie 设备上的 Session Bridge。
 
 风险：
 

@@ -91,6 +91,8 @@ OAuth user
 
 ### `bridge_secrets`
 
+`bridge_secrets` 不是浏览器插件存储。它表示 Control Plane 服务端保存 bridge 调用凭证的方式：例如开发期 `.env`、受限数据库里的 secret reference、Vault 或云 secret manager。Control Plane 调用某台 bridge 时用它取 `SESSION_BRIDGE_TOKEN`；Browser Side Panel 永远只拿授权后的 instance/session projection。
+
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `bridge_id` | string | 是 | 关联 bridge |
@@ -103,6 +105,7 @@ OAuth user
 
 - 原始 `SESSION_BRIDGE_TOKEN` 不进普通数据库明文字段。
 - 浏览器 extension 永远不读取该表。
+- projection、diagnostics、history、operation card 都不得返回 `secret_ref`、token hash 或可用于调用 bridge 的任何凭证。
 
 ### `instance_bridge_bindings`
 

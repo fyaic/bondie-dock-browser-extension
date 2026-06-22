@@ -18,6 +18,13 @@
 | `09-bondie-multi-instance-prd.md` | Bondie 多实例 Side Panel PRD、阶段计划和验收标准 |
 | `10-self-checklist.md` | 执行者自检清单 |
 | `11-session-bridge-fix-runbook.md` | Session Bridge 504 修复、回退、验证 runbook |
+| `12-control-plane-contract.md` | Browser Side Panel 与 Bondie Control Plane 的生产 API contract |
+| `13-bridge-registry-schema.md` | Bondie instance、relationship、bridge、secret、binding、health schema |
+| `14-device-onboarding-checklist.md` | 每台 Bondie/OpenClaw 设备安装 bridge、注册、smoke 和回滚清单 |
+| `15-multi-bridge-health-readiness.md` | 多 bridge health/readiness 聚合、UI 映射和 fail-closed 规则 |
+| `16-handoff-2026-06-18.md` | 当前工作现场、commit、验证和后续任务交接 |
+| `17-oauth-token-interface.md` | OAuth token provider-neutral 接口、状态机和 fail-closed 规则 |
+| `18-system-boundary-and-repo-plan.md` | Side Panel / Control Plane / Session Bridge 边界、独立仓库拆分和 bridge secret store 解释 |
 | `TODO.md` | 动态任务状态 |
 | `99-deviation-log.md` | 偏差、阻塞和已跳过事项 |
 

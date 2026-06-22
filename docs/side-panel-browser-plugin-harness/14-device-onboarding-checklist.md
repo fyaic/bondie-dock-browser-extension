@@ -53,7 +53,7 @@ curl -s http://<tailscale-ip-or-magicdns>:8766/health
 
 ```bash
 cd ~/projects
-git clone https://github.com/veil-chow-fyaic/openclaw-session-bridge.git
+git clone https://github.com/fyaic/bondie-openclaw-session-bridge.git
 cd openclaw-session-bridge
 python3 -m venv .venv
 . .venv/bin/activate

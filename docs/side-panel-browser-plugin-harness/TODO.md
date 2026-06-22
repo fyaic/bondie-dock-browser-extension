@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 8 - Bondie bridge registry / health readiness documented, Control Plane adapter still runtime-gated。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8 文档侧已完成 bridge registry schema、device onboarding checklist、multi-bridge health/readiness gate；当前 `BondieControlPlaneAdapter` 仍未接入 `module.js` runtime，下一步是 provider-neutral OAuth token interface、Control Plane runtime wiring 预备和更多 Chrome 自动化回归。
+当前阶段：Phase 8.5 - system boundary / repo split documented, Control Plane adapter still runtime-gated。已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8 文档侧已完成 bridge registry schema、device onboarding checklist、multi-bridge health/readiness gate；Phase 8.5 已明确 Browser Side Panel / Bondie Control Plane / OpenClaw Session Bridge 的系统边界、独立仓库拆分和 bridge secret store 语义。当前 `BondieControlPlaneAdapter` 仍未接入 `module.js` runtime，下一步是等待登录授权系统文档后接 OAuth token provider，并预备 Control Plane runtime wiring 和更多 Chrome 自动化回归。
 
 ## 已完成
 
@@ -72,6 +72,7 @@
 - [x] Phase 8 Device Onboarding checklist：新增 `14-device-onboarding-checklist.md`，整理设备安装、Tailscale、smoke、registry、回滚。
 - [x] Phase 8 Multi-bridge health readiness：新增 `15-multi-bridge-health-readiness.md`，定义 health 聚合、readiness gate、UI 映射和告警。
 - [x] 当前工作现场 handoff：新增 `16-handoff-2026-06-18.md`，记录 commits、验证、未完成决策和禁止回退项。
+- [x] Phase 8.5 系统边界：新增 `18-system-boundary-and-repo-plan.md`，明确 Control Plane 是服务侧 API，不是浏览器 Side Panel 前端；建议独立维护标准 OpenClaw Session Bridge 仓库；解释 bridge secret store。
 
 ## Linear 树
 
@@ -167,6 +168,9 @@
 - [x] 增加 fixture action fail-closed：fixture 模式下 UI 禁用 new/switch，background message 也返回 `fixture_read_only`。
 - [ ] 设计 OAuth identity adapter：生产 `sidePanel.identity.status`。
 - [ ] 设计 permitted instances adapter：生产 `sidePanel.instances.list`。
+- [ ] 等待登录授权系统接入文档后，对齐 OAuth token provider 与 Control Plane `/v1/me`。
+- [x] 创建 private Session Bridge 远程仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`，本地 remote 名为 `fyaic`。
+- [ ] 提交并 push Session Bridge 文档到 `fyaic/bondie-openclaw-session-bridge`。
 - [x] 设计并实现 extension message-level instance contract：`list/new/switch({ instanceId })`。
 - [x] 新增 identity mode gate：`legacy-paired` / `oauth`，OAuth mode 未接入 adapter 前 fail closed。
 - [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`，control-plane mode 未接入 adapter 前 fail closed。
@@ -185,6 +189,8 @@
 - [x] 设计设备 onboarding checklist：OpenClaw、Tailscale、bridge、launchd/systemd、smoke。
 - [x] 设计 multi-bridge health aggregation 和 readiness gate。
 - [x] 将 B `/v1/sessions` Gateway 504 性能修复拆为 B 侧依赖任务，并完成源码修复记录。
+- [x] 解释 bridge secret store：服务端保存 `SESSION_BRIDGE_TOKEN` 或 secret reference，浏览器不读取、不展示、不下发。
+- [x] 冻结推荐仓库拆分：Browser Extension / OpenClaw Session Bridge / Bondie Control Plane。
 
 ## 本轮验证
 
