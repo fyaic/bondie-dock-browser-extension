@@ -125,8 +125,8 @@ https://github.com/fyaic/bondie-openclaw-session-bridge.git
 
 ```text
 /Users/fuyo-aic/Projects/openclaw-session-bridge
-current remote: https://github.com/veil-chow-fyaic/openclaw-session-bridge.git
-new remote: https://github.com/fyaic/bondie-openclaw-session-bridge.git
+origin: https://github.com/fyaic/bondie-openclaw-session-bridge.git
+legacy-origin: https://github.com/veil-chow-fyaic/openclaw-session-bridge.git
 ```
 
 职责：

@@ -175,8 +175,9 @@
 - [ ] 设计 OAuth identity adapter：生产 `sidePanel.identity.status`。
 - [ ] 设计 permitted instances adapter：生产 `sidePanel.instances.list`。
 - [ ] 等待登录授权系统接入文档后，对齐 OAuth token provider 与 Control Plane `/v1/me`。
-- [x] 创建 private Session Bridge 远程仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`，本地 remote 名为 `fyaic`。
-- [x] 提交并 push Session Bridge 文档到 `fyaic/bondie-openclaw-session-bridge`，远端 `main` 为 `9b02c95`。
+- [x] 创建 private Session Bridge 远程仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`，本地 remote 已收口为 `origin`。
+- [x] 旧仓库 `https://github.com/veil-chow-fyaic/openclaw-session-bridge.git` 已改为 `legacy-origin`，只作历史参考。
+- [x] 提交并 push Session Bridge 最新代码到 `fyaic/bondie-openclaw-session-bridge`，远端 `main` 为 `91fcca8`。
 - [x] 设计并实现 extension message-level instance contract：`list/new/switch({ instanceId })`。
 - [x] 新增 identity mode gate：`legacy-paired` / `oauth`，OAuth mode 未接入 adapter 前 fail closed。
 - [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`，control-plane mode 未接入 adapter 前 fail closed。

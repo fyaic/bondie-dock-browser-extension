@@ -248,4 +248,4 @@ POST bridge /v1/switch-session
 - Session Bridge: 每设备本地 adapter、Gateway 性能修复、metadata、标准分发。
 - OpenClaw Gateway: session list/restore/new 的正式能力和性能稳定性。
 
-Session Bridge 已创建 private 独立仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`。当前本地参考实现位于 `/Users/fuyo-aic/Projects/openclaw-session-bridge`，旧 remote 是 `https://github.com/veil-chow-fyaic/openclaw-session-bridge.git`，新 remote 名为 `fyaic`；本地提交和 push 仍按 git 操作确认节奏执行。
+Session Bridge 已创建 private 独立仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`。当前本地参考实现位于 `/Users/fuyo-aic/Projects/openclaw-session-bridge`，新标准分发仓库是本地 `origin`，旧仓库 `https://github.com/veil-chow-fyaic/openclaw-session-bridge.git` 已改为 `legacy-origin` 只读参考；本地提交和 push 仍按 git 操作确认节奏执行。
