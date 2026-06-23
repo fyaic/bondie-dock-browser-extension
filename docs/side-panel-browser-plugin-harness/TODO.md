@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 10 - Bondie Dock 产品化与 Control Plane 主线启动。Phase 9 local Bondie visibility functional wiring 已完成；已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 已补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`，只显示 Veil/周威 route 相关 sessions。2026-06-23 已将浏览器插件用户可见产品名定为 Bondie Dock，并新增命名/系统边界文档。`fyaic/bondie-control-plane` private 仓库已创建并推送初始服务骨架。当前 `BondieControlPlaneAdapter` 仍未接入真实 OAuth runtime，后续等待登录授权系统文档后接 token provider。
+当前阶段：Phase 10 - Bondie Dock 产品化与 Control Plane 主线启动。Phase 9 local Bondie visibility functional wiring 已完成；已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 已补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`，只显示 Veil/周威 route 相关 sessions。2026-06-23 已将浏览器插件用户可见产品名定为 Bondie Dock，并新增命名/系统边界文档。`fyaic/bondie-control-plane` private 仓库已创建并推送初始服务骨架，且已补 bridge health readiness 与 GitHub Actions CI smoke。当前 `BondieControlPlaneAdapter` 仍未接入真实 OAuth runtime，后续等待登录授权系统文档后接 token provider。
 
 ## 已完成
 
@@ -83,6 +83,8 @@
 - [x] Phase 10 系统边界：新增 `19-product-naming-and-system-map.md`，明确 Bondie Dock、Bondie Control Plane、Bondie OpenClaw Session Bridge 的命名和仓库边界。
 - [x] Phase 10 Control Plane repo：创建 private 仓库 `https://github.com/fyaic/bondie-control-plane`，本地路径 `/Users/fuyo-aic/Projects/bondie-control-plane`。
 - [x] Phase 10 Control Plane MVP：初始 Node 零依赖服务、dev token identity、file registry、relationship resolver、bridge sessions proxy、local tests 和三仓互链文档已推送到 `main`。
+- [x] Phase 10 Control Plane readiness：新增 bridge health projection，`/v1/bondie-instances` 和 `/v1/bridge-health` 可返回安全 health/status/actions projection，token/endpoint 不下发浏览器。
+- [x] Phase 10 Control Plane CI：新增 GitHub Actions smoke，push/PR 自动运行 `npm test` 和 `npm run check`。
 
 ## Phase 10 Control Plane 实现草案
 
@@ -92,8 +94,8 @@
 - [x] 实现 relationship resolver：`subordinate/all_sessions` 与 `communication/participant_sessions`。
 - [x] 实现 bridge registry MVP 和 sessions proxy，配置上可接入当前 `100.79.143.105:8766`。
 - [x] 暂用 dev token provider，真实 OAuth 等登录授权系统文档到位后替换。
-- [ ] 增加 bridge health aggregation / stale readiness。
-- [ ] 增加 GitHub Actions CI smoke。
+- [x] 增加 bridge health aggregation / stale readiness。
+- [x] 增加 GitHub Actions CI smoke。
 - [ ] Bondie Dock provider 切到 `bondie-control-plane` 后，验证 ABC 多实例合集和权限过滤。
 
 ## Linear 树

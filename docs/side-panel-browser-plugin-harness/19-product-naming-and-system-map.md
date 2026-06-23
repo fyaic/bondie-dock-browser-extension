@@ -53,6 +53,6 @@
 ## 下一步主线
 
 1. 保持本地 Bondie 从属/沟通关系测试链路稳定。
-2. 推进 `bondie-control-plane`：初始 dev token / registry / relationship resolver / bridge proxy 骨架已创建；下一步补 health aggregation、真实 OAuth token provider 和 Bondie Dock runtime adapter。
+2. 推进 `bondie-control-plane`：初始 dev token / registry / relationship resolver / bridge proxy / bridge health readiness / CI 骨架已创建；下一步补真实 OAuth token provider 和 Bondie Dock runtime adapter。
 3. Bondie Dock 从 `legacy-session-bridge` 切到 `bondie-control-plane` provider 后，验证 ABC 多实例同时显示和权限过滤。
 4. 标准化每台 Bondie/OpenClaw 设备部署 Session Bridge 的安装、健康检查、注册和回滚流程。
