@@ -11,10 +11,11 @@ import {
 } from './control-plane-contract.js';
 
 export class BondieControlPlaneAdapter {
-  constructor({ config, accessToken = '', getAccessToken = null, fetchImpl = null } = {}) {
+  constructor({ config, accessToken = '', getAccessToken = null, chromeApi = null, fetchImpl = null } = {}) {
     this.config = config || {};
     this.accessToken = cleanString(accessToken);
     this.getAccessToken = typeof getAccessToken === 'function' ? getAccessToken : null;
+    this.chrome = chromeApi;
     this.fetchImpl = fetchImpl || ((...args) => fetch(...args));
   }
 
@@ -222,13 +223,28 @@ export class BondieControlPlaneAdapter {
 
   async readiness() {
     const baseUrl = cleanString(this.config.sidePanelControlPlaneBaseUrl || this.config.controlPlaneBaseUrl);
+    const permissionOrigin = originPattern(baseUrl);
     if (!baseUrl) {
       return {
         ready: false,
         state: 'permission_unresolved',
         error: 'control_plane_not_configured',
         message: 'Bondie Control Plane URL is not configured',
-        baseUrlConfigured: false
+        baseUrlConfigured: false,
+        authConfigured: false,
+        permission: buildPermissionState(permissionOrigin, false)
+      };
+    }
+
+    if (!permissionOrigin) {
+      return {
+        ready: false,
+        state: 'invalid_base_url',
+        error: 'invalid_base_url',
+        message: 'Bondie Control Plane URL must use http or https',
+        baseUrlConfigured: true,
+        authConfigured: false,
+        permission: buildPermissionState(permissionOrigin, false)
       };
     }
 
@@ -240,8 +256,25 @@ export class BondieControlPlaneAdapter {
         state: 'identity_required',
         error: 'identity_required',
         message: 'OAuth identity is required before reading Bondie sessions',
-        baseUrlConfigured: true
+        baseUrlConfigured: true,
+        authConfigured: false,
+        permission: buildPermissionState(permissionOrigin, false)
       };
+    }
+
+    if (this.chrome?.permissions?.contains) {
+      const hasPermission = await hasOriginPermission(this.chrome, permissionOrigin);
+      if (!hasPermission) {
+        return {
+          ready: false,
+          state: 'permission_required',
+          error: 'permission_required',
+          message: 'Bondie Control Plane host permission is required',
+          baseUrlConfigured: true,
+          authConfigured: true,
+          permission: buildPermissionState(permissionOrigin, true)
+        };
+      }
     }
 
     return {
@@ -249,8 +282,10 @@ export class BondieControlPlaneAdapter {
       state: 'ready',
       baseUrl,
       baseUrlConfigured: true,
+      authConfigured: true,
       timeoutMs: normalizeTimeout(this.config.sidePanelControlPlaneTimeoutMs || this.config.sessionBridgeTimeoutMs),
-      headers
+      headers,
+      permission: buildPermissionState(permissionOrigin, true, true)
     };
   }
 
@@ -354,7 +389,9 @@ function publicReadiness(readiness) {
     provider: 'bondie-control-plane',
     state: readiness?.state || 'unknown',
     ready: readiness?.ready === true,
-    baseUrlConfigured: readiness?.baseUrlConfigured === true
+    baseUrlConfigured: readiness?.baseUrlConfigured === true,
+    authConfigured: readiness?.authConfigured === true,
+    permission: readiness?.permission || buildPermissionState('', false)
   };
 }
 
@@ -386,6 +423,35 @@ function normalizeTimeout(value) {
     return 20000;
   }
   return Math.max(1000, Math.min(timeoutMs, 120000));
+}
+
+function originPattern(baseUrl) {
+  try {
+    const url = new URL(baseUrl);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '';
+    }
+    return `${url.origin}/*`;
+  } catch {
+    return '';
+  }
+}
+
+async function hasOriginPermission(chromeApi, origin) {
+  if (!origin || !chromeApi?.permissions?.contains) {
+    return false;
+  }
+  return await new Promise((resolve) => {
+    chromeApi.permissions.contains({ origins: [origin] }, (result) => resolve(Boolean(result)));
+  });
+}
+
+function buildPermissionState(origin, required, granted = false) {
+  return {
+    required,
+    granted,
+    origin: origin || ''
+  };
 }
 
 function cleanString(value) {

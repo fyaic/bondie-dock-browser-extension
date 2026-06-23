@@ -299,6 +299,18 @@ async function maybeHandleFeatureModuleMessage(message, sender) {
 }
 
 async function getSidePanelOAuthToken() {
+  const stored = await chrome.storage.local.get(['sidePanelControlPlaneDevToken']);
+  const devToken = cleanConfigString(stored.sidePanelControlPlaneDevToken);
+  if (devToken) {
+    return normalizeOAuthTokenState({
+      state: 'authenticated',
+      accessToken: devToken,
+      expiresAt: '',
+      provider: 'dev-token',
+      viewer: null
+    });
+  }
+
   return normalizeOAuthTokenState({
     state: 'provider_unconfigured',
     accessToken: '',

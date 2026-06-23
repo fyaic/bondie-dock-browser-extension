@@ -58,13 +58,13 @@ const STATE_COPY = {
   },
   missing_config: {
     kicker: '缺少配置',
-    title: 'Session Bridge 尚未配置',
-    summary: '连接状态可用，下一步需要补齐 Bridge URL 和 token 才能列出 scoped sessions。'
+    title: '会话服务尚未配置',
+    summary: '下一步需要补齐 Session Bridge 或 Control Plane 的 URL 与 token 才能列出 scoped sessions。'
   },
   bridge_permission_required: {
     kicker: '等待授权',
-    title: '需要允许访问 Session Bridge',
-    summary: '浏览器还没有授予 Bridge 地址访问权限。授权后才会发起 status/list 请求。'
+    title: '需要允许访问会话服务',
+    summary: '浏览器还没有授予会话服务地址访问权限。授权后才会发起 status/list 请求。'
   },
   bridge_unavailable: {
     kicker: 'Bridge 不可用',
@@ -131,8 +131,8 @@ elements.pageSummarize.addEventListener('click', () => runPageService('summarize
 elements.pageKnowledge.addEventListener('click', () => runPageService('knowledge'));
 elements.pageResearch.addEventListener('click', () => runPageService('research'));
 elements.openHistoryDock.addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('src/history.html') }));
-elements.newSession.title = '新开对话会调用 Session Bridge，并按 new_conversation_confirmed 判断完成态';
-elements.switchSession.title = '切换会话会调用 Session Bridge，并按 route_switch_confirmed 判断完成态';
+elements.newSession.title = '新开对话会调用会话服务，并按 confirmed 字段判断完成态';
+elements.switchSession.title = '切换会话会调用会话服务，并按 confirmed 字段判断完成态';
 
 refreshStatus();
 setInterval(refreshStatus, 7000);
@@ -396,11 +396,12 @@ async function runSessionAction(message) {
 }
 
 async function requestBridgePermission() {
+  const target = isControlPlanePayload(lastStatusPayload) ? 'Control Plane' : 'Bridge';
   if (!currentBridgePermissionOrigin || !chrome.permissions?.request) {
     renderSessions({
       state: 'bridge_permission_required',
       sessions: [],
-      error: '当前浏览器不支持动态授权 Bridge 地址'
+      error: `当前浏览器不支持动态授权 ${target} 地址`
     });
     return;
   }
@@ -414,7 +415,7 @@ async function requestBridgePermission() {
     renderSessions({
       state: 'bridge_permission_required',
       sessions: [],
-      error: '授权未完成，暂不访问 Session Bridge'
+      error: `授权未完成，暂不访问 ${target}`
     });
     return;
   }
@@ -774,6 +775,7 @@ function selectedActionGroup(payload = lastSessionsPayload || {}) {
 
 function updateSessionActionHint(payload, groups) {
   const state = payload.state || lastStatusPayload?.state;
+  const usesControlPlane = isControlPlanePayload(payload) || isControlPlanePayload(lastStatusPayload);
   if (state !== 'ready') {
     return;
   }
@@ -794,7 +796,9 @@ function updateSessionActionHint(payload, groups) {
     elements.actionHint.textContent = '从属关系可查看全部；新开对话前先选择一条会话作为 route';
     return;
   }
-  elements.actionHint.textContent = 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
+  elements.actionHint.textContent = usesControlPlane
+    ? 'Control Plane 已接入，new/switch 会按所选 Bondie 权限路由到对应实例'
+    : 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
 }
 
 function groupRequiresRouteSessionHint(group) {
@@ -1148,6 +1152,7 @@ function onlineLabel(connection) {
 }
 
 function bridgeLabel(bridge) {
+  const usesControlPlane = isControlPlaneBridge(bridge);
   if (bridge.state === 'disabled') {
     return '模块已禁用';
   }
@@ -1155,7 +1160,7 @@ function bridgeLabel(bridge) {
     return '需要授权访问';
   }
   if (bridge.available) {
-    return bridge.remote?.bridgeName || 'Bridge 在线';
+    return bridge.remote?.bridgeName || (usesControlPlane ? 'Control Plane 在线' : 'Bridge 在线');
   }
   if (bridge.state === 'unauthorized') {
     return 'Token 被拒绝';
@@ -1167,29 +1172,32 @@ function bridgeLabel(bridge) {
     return '暂不可达';
   }
   if (bridge.configured) {
-    return '已配置 URL 与 token';
+    return usesControlPlane ? 'Control Plane 已配置' : '已配置 URL 与 token';
   }
   if (bridge.state === 'missing_auth') {
-    return '缺少 Bridge token';
+    return usesControlPlane ? '缺少 Control Plane token' : '缺少 Bridge token';
   }
   if (bridge.state === 'missing_base_url') {
-    return '缺少 Bridge URL';
+    return usesControlPlane ? '缺少 Control Plane URL' : '缺少 Bridge URL';
   }
-  return '缺少 Bridge URL';
+  return usesControlPlane ? '缺少 Control Plane URL' : '缺少 Bridge URL';
 }
 
 function actionHint(payload) {
+  const usesControlPlane = isControlPlanePayload(payload);
   if (payload.state === 'ready') {
-    return 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
+    return usesControlPlane
+      ? 'Control Plane 已接入，选择 Bondie 后可按权限新开或恢复会话'
+      : 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
   }
   if (payload.state === 'bridge_permission_required') {
-    return '点击授权按钮后才会访问 Bridge 地址';
+    return usesControlPlane ? '点击授权按钮后才会访问 Control Plane 地址' : '点击授权按钮后才会访问 Bridge 地址';
   }
   if (payload.state === 'bridge_unavailable') {
-    return '检查 Bridge 服务、网络、token 或超时设置';
+    return usesControlPlane ? '检查 Control Plane 服务、网络、token 或超时设置' : '检查 Bridge 服务、网络、token 或超时设置';
   }
   if (payload.state === 'scope_unresolved') {
-    return '当前 scope 没有被 Bridge 解析为可访问会话';
+    return usesControlPlane ? '当前用户没有被解析到可访问 Bondie 会话' : '当前 scope 没有被 Bridge 解析为可访问会话';
   }
   if (payload.state === 'empty_sessions') {
     return '当前 scope 暂无历史会话，可新开对话';
@@ -1207,13 +1215,14 @@ function actionHint(payload) {
 }
 
 function bridgeConfigHint(bridge) {
+  const prefix = isControlPlaneBridge(bridge) ? 'Control Plane' : 'Bridge';
   if (bridge.state === 'missing_auth') {
-    return '补齐 Bridge token 后再加载会话列表';
+    return `补齐 ${prefix} token 后再加载会话列表`;
   }
   if (bridge.state === 'missing_base_url') {
-    return '配置 Bridge URL 后再加载会话列表';
+    return `配置 ${prefix} URL 后再加载会话列表`;
   }
-  return '补齐 Bridge 配置后再加载会话列表';
+  return `补齐 ${prefix} 配置后再加载会话列表`;
 }
 
 function sessionsEmptyText(state, error) {
@@ -1264,6 +1273,17 @@ function diagnosticsText(payload) {
     `updated_at: ${payload.updatedAt || 'unknown'}`
   ];
   return lines.join('\n');
+}
+
+function isControlPlanePayload(payload = {}) {
+  return payload.instanceProvider?.provider === 'bondie-control-plane'
+    || isControlPlaneBridge(payload.bridge || {});
+}
+
+function isControlPlaneBridge(bridge = {}) {
+  return bridge.adapter === 'bondie-control-plane'
+    || bridge.remote?.adapter?.adapter === 'bondie-control-plane'
+    || bridge.remote?.bridgeId === 'bondie-control-plane';
 }
 
 function sessionTitle(session) {

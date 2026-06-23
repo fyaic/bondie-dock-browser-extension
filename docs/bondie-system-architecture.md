@@ -22,6 +22,8 @@ Bondie Dock browser extension
   -> OpenClaw runtime / Gateway
 ```
 
+当前本地落地状态：Bondie Dock 已支持通过 `bondie-control-plane` provider 调用本地 Bondie Control Plane；开发期 token 由 Options 的 Control Plane dev token 提供，生产 OAuth token provider 待登录授权系统文档接入。
+
 ## 插件的插件
 
 Bondie Dock 是浏览器插件宿主。Side Panel 不是独立产品仓库，而是 Dock 内部的 feature module：
@@ -58,4 +60,3 @@ extension/src/sidepanel/
 ```
 
 Session Bridge 当前本地运行服务仍由 launchd 引用旧路径 `/Users/fuyo-aic/Projects/openclaw-session-bridge`。为避免打断正式 `100.79.143.105:8766`，本轮只统一远端仓库和文档命名；本地路径迁移应在更新 launchd plist 后单独执行。
-

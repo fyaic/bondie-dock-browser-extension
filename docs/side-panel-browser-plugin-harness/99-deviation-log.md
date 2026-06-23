@@ -18,13 +18,13 @@
   - 处理：Phase 7B 给 `sidePanel.sessions.list/new/switch` 增加 `instanceId`；legacy mode 对未知 instance 返回 `instance_unavailable`，fixture action 返回 `fixture_read_only`，UI 执行动作时携带当前可操作 instance id。
 
 - 偏差：如果继续默认用 device pairing 构造 viewer，开发者可能误把设备配对当成生产用户身份。
-  - 处理：新增 `sidePanelIdentityMode`。默认 `legacy-paired` 只保留 direct Bridge 兼容路径；切换到 `oauth` 后，在真实 OAuth adapter 未接入前返回 `identity_required`，不列 sessions/instances，也不请求 Session Bridge。
+  - 处理：新增 `sidePanelIdentityMode`。默认 `legacy-paired` 只保留 direct Bridge 兼容路径；Phase 10 已增加 dev-token provider 供 Control Plane smoke 使用，生产 OAuth token provider 仍待登录授权系统文档。
 
 - 偏差：引入 Bondie Control Plane provider 后，如果 provider 未实现时自动回退 legacy Bridge，会把生产权限路径误连到单 Bridge 开发路径。
-  - 处理：新增 `sidePanelInstanceProvider`。默认 `legacy-session-bridge` 保持现有体验；切换到 `bondie-control-plane` 后要求 OAuth/control-plane adapter，当前返回 `identity_required` / `permission_unresolved`，不回退 legacy sessions。
+  - 处理：新增 `sidePanelInstanceProvider`。默认 `legacy-session-bridge` 保持现有体验；切换到 `bondie-control-plane` 后要求 OAuth/control-plane adapter。Phase 10 已接 runtime adapter，但仍不回退 legacy sessions。
 
 - 偏差：如果直接实现 Control Plane fetch adapter，可能在 OAuth provider 和服务端归属未定时制造半通不通的生产路径。
-  - 处理：Phase 7C 先落地纯 contract helper 和文档，冻结 endpoint、relationship/visibility 校验、payload normalizer 与 action confirmation 规则；runtime 仍保持 `bondie-control-plane` fail closed。
+  - 处理：Phase 7C 先落地纯 contract helper 和文档，冻结 endpoint、relationship/visibility 校验、payload normalizer 与 action confirmation 规则；Phase 10 在 Control Plane 仓库和 dev-token provider 就绪后再接入 runtime，并保留缺 URL/token/OAuth/host permission 时 fail closed。
 
 ## 2026-06-17
 
@@ -146,3 +146,6 @@
 
 - 偏差：正式 Bridge 是否真正加载补丁需要用 `debug.timings` 验证，不能只看 `/v1/sessions` 是否返回 200。
   - 处理：正式重启后 `/v1/sessions?debug=true` 返回 `has_timings=true`、`short_circuited=true`、`session_count=26`、`total_ms=6003`；Chrome Side Panel 指向正式 Bridge 复测通过，稳定展示 26 个真实 sessions。
+
+- 偏差：Phase 10 Control Plane runtime 接线已通过模块级只读 smoke，但本轮未把最新 unpacked extension 再装入真实 Chrome 做 UI 手测。
+  - 处理：已用 `sidePanel.status` / `sidePanel.sessions.list` message handler 直接走本地 Control Plane 验证真实 runtime 路径，返回 `ready`、2 个实例、27 条 sessions；同时保留真实 Chrome 手动 gate，下一轮由用户加载最新扩展后验证 Options 配置、host permission 授权、实例切换和 UI 文案。

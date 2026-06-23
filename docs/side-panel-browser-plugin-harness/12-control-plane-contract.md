@@ -10,7 +10,7 @@
 - 当前用户能访问哪些 Bondie 实例：每个实例必须带 relationship 和 visibility policy。
 - 每个实例下可见 sessions 以及 new/switch action 的完成确认。
 
-当前分支已实现 contract helper：`extension/src/modules/bondie-side-panel/control-plane-contract.js`，以及 adapter skeleton：`extension/src/modules/bondie-side-panel/control-plane-adapter.js`。adapter 目前只通过 fake fetch 脚本验证，还没有接入 `module.js` runtime；`sidePanelInstanceProvider=bondie-control-plane` 仍保持 fail closed。
+当前分支已实现 contract helper：`extension/src/modules/bondie-side-panel/control-plane-contract.js`，以及 runtime adapter：`extension/src/modules/bondie-side-panel/control-plane-adapter.js`。`sidePanelIdentityMode=oauth` 且 `sidePanelInstanceProvider=bondie-control-plane` 时，Dock 会通过 background token provider 调用 Control Plane；开发期可使用 Options 中的 Control Plane dev token，本地只读 smoke 已验证 2 个实例、27 条 sessions。生产 OAuth token provider 等登录授权系统文档到位后替换。
 
 命名边界：Browser Side Panel 是本仓库的前端 UI；Bondie Control Plane 是服务侧 API / 控制面，不是 Side Panel 页面。Control Plane 内部再通过 bridge registry 和 bridge secret store 调用每台 Bondie 设备上的 OpenClaw Session Bridge。系统拆分见 `18-system-boundary-and-repo-plan.md`。
 
@@ -203,6 +203,7 @@ adapter readiness 规则：
 ## 下一步
 
 1. 设计 OAuth token 获取与刷新 adapter。
-2. 接入 Control Plane fetch adapter，并只在 `sidePanelIdentityMode=oauth` 且 `sidePanelInstanceProvider=bondie-control-plane` 时启用。
+1. 接入生产 OAuth token 获取与刷新 adapter，替换当前 dev token provider。
+2. 增加浏览器人工 gate：Control Plane URL/dev token/host permission 配置后，Side Panel UI 能展示多实例合集并按实例过滤。
 3. 增加越权测试：无 OAuth、仅 pairing、无 relationship、沟通关系枚举他人 session。
-4. 与服务端仓库对齐 endpoint 和 response schema。
+4. 与服务端仓库持续对齐 endpoint 和 response schema。

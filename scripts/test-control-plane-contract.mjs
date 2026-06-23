@@ -377,6 +377,98 @@ assert.equal(moduleNewResult.payload.state, 'identity_required');
 assert.equal(moduleNewResult.payload.confirmed, false);
 assert.equal(moduleNewResult.payload.instanceId, 'bondie-a');
 
+const moduleControlPlaneCalls = [];
+const moduleControlPlaneContext = createModuleContext({
+  sidePanelIdentityMode: 'oauth',
+  sidePanelInstanceProvider: 'bondie-control-plane',
+  sidePanelControlPlaneBaseUrl: 'https://bondie.example.com/api'
+}, {
+  accessToken: 'redacted-token',
+  fetchImpl: async (url, options) => {
+    moduleControlPlaneCalls.push({ url, options });
+    const parsed = new URL(url);
+    if (parsed.pathname === '/api/v1/me') {
+      return jsonResponse({
+        authenticated: true,
+        source: 'dev-token',
+        viewer: {
+          user_id: 'veil',
+          display_name: 'Veil'
+        }
+      });
+    }
+    if (parsed.pathname === '/api/v1/bondie-instances') {
+      return jsonResponse({
+        viewer: {
+          user_id: 'veil',
+          display_name: 'Veil'
+        },
+        instances: [
+          {
+            instance_id: 'bondie-a',
+            display_name: 'Bondie A',
+            relationship_type: 'subordinate',
+            visibility_policy: 'all_sessions',
+            status: 'online',
+            actions_enabled: true
+          }
+        ]
+      });
+    }
+    if (parsed.pathname === '/api/v1/bondie-instances/bondie-a/sessions') {
+      return jsonResponse({
+        instance: {
+          instance_id: 'bondie-a',
+          display_name: 'Bondie A',
+          relationship_type: 'subordinate',
+          visibility_policy: 'all_sessions',
+          status: 'online',
+          actions_enabled: true
+        },
+        sessions: [
+          {
+            session_id: 'sess-a',
+            title: 'Bondie A session',
+            updated_at: '2026-06-23T00:00:00Z'
+          }
+        ]
+      });
+    }
+    if (parsed.pathname === '/api/v1/bondie-instances/bondie-a/sessions/new') {
+      return jsonResponse({
+        operation_status: 'confirmed',
+        new_conversation_confirmed: true,
+        session: {
+          session_id: 'sess-new',
+          title: 'New Bondie A session'
+        }
+      });
+    }
+    return jsonResponse({}, 404);
+  }
+});
+const moduleControlPlaneList = await bondieSidePanelModule.messages['sidePanel.sessions.list']({
+  message: {},
+  context: moduleControlPlaneContext
+});
+assert.equal(moduleControlPlaneList.ok, true);
+assert.equal(moduleControlPlaneList.payload.state, 'ready');
+assert.equal(moduleControlPlaneList.payload.instances.length, 1);
+assert.equal(moduleControlPlaneList.payload.groups.length, 1);
+assert.equal(moduleControlPlaneList.payload.sessions.length, 1);
+assert.equal(moduleControlPlaneList.payload.sessions[0].instance_id, 'bondie-a');
+assert.ok(moduleControlPlaneCalls.every((call) => call.options.headers.Authorization === 'Bearer redacted-token'));
+
+const moduleControlPlaneNew = await bondieSidePanelModule.messages['sidePanel.sessions.new']({
+  message: {
+    instanceId: 'bondie-a'
+  },
+  context: moduleControlPlaneContext
+});
+assert.equal(moduleControlPlaneNew.ok, true);
+assert.equal(moduleControlPlaneNew.payload.state, 'action_confirmed');
+assert.equal(moduleControlPlaneNew.payload.confirmed, true);
+
 const subordinateLocalContext = createModuleContext({
   sidePanelLocalRelationshipType: 'subordinate'
 });
@@ -393,7 +485,8 @@ console.log(JSON.stringify({
   instances: instancesPayload.instances.length,
   sessions: sessionsPayload.sessions.length,
   adapterCalls: calls.length,
-  moduleFailClosed: true
+  moduleFailClosed: true,
+  moduleControlPlaneCalls: moduleControlPlaneCalls.length
 }));
 
 function jsonResponse(body, status = 200) {
@@ -405,10 +498,20 @@ function jsonResponse(body, status = 200) {
   };
 }
 
-function createModuleContext(configOverrides = {}) {
+function createModuleContext(configOverrides = {}, options = {}) {
   return {
     chrome: {},
+    fetchImpl: options.fetchImpl,
     getConfig: async () => configOverrides,
+    getSidePanelOAuthToken: async () => normalizeOAuthTokenState(options.accessToken
+      ? {
+          state: 'authenticated',
+          accessToken: options.accessToken,
+          provider: 'dev-token'
+        }
+      : {
+          state: 'provider_unconfigured'
+        }),
     ensureHostIdentity: async () => ({
       hostId: 'host-1'
     }),

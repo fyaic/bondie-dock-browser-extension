@@ -1,4 +1,5 @@
 import { OpenClawSessionAdapter } from './session-adapter.js';
+import { BondieControlPlaneAdapter } from './control-plane-adapter.js';
 
 const MODULE_ID = 'bondie-side-panel';
 const MODULE_NAME = 'Bondie Dock Side Panel';
@@ -14,6 +15,7 @@ export const SIDE_PANEL_DEFAULT_CONFIG = {
   sidePanelInstanceProvider: 'legacy-session-bridge',
   sidePanelLocalRelationshipType: 'communication',
   sidePanelControlPlaneBaseUrl: '',
+  sidePanelControlPlaneDevToken: '',
   sidePanelWorkspaceId: 'default',
   sidePanelOrganization: 'default',
   sidePanelRouteType: 'browser',
@@ -54,11 +56,9 @@ async function handleStatus({ context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
-  const identityState = buildIdentityState(config, identity, connection);
+  const identityState = buildIdentityState(config, identity, connection, trustedPairing.oauthTokenState);
   const instanceProvider = buildInstanceProviderState(config, identityState);
-  const bridge = shouldReadBridge(identityState, instanceProvider)
-    ? await readBridgeStatus({ config, module, connection, context })
-    : buildBridgeStatus(config, module.enabled);
+  const bridge = await readProviderStatus({ config, module, connection, identityState, instanceProvider, context });
   const scope = buildScope(config, identity, connection);
   const state = derivePanelState(module, connection, bridge, identityState, instanceProvider);
 
@@ -103,6 +103,14 @@ async function handleNewSession({ message, context }) {
     }));
   }
 
+  if (actionContext.instanceProvider.provider === 'bondie-control-plane') {
+    return ok(await runControlPlaneAction('new', actionContext, {
+      context,
+      instanceId,
+      messageCardStyle: message?.messageCardStyle || 'friendly'
+    }));
+  }
+
   const result = await createSessionAdapter(actionContext.config, context).newConversation(actionContext.scope, {
     messageCardStyle: message?.messageCardStyle || 'friendly',
     sessionId: message?.sessionId
@@ -129,6 +137,15 @@ async function handleSwitchSession({ message, context }) {
     }));
   }
 
+  if (actionContext.instanceProvider.provider === 'bondie-control-plane') {
+    return ok(await runControlPlaneAction('switch', actionContext, {
+      context,
+      instanceId,
+      sessionId: message?.sessionId,
+      messageCardStyle: message?.messageCardStyle || 'friendly'
+    }));
+  }
+
   const result = await createSessionAdapter(actionContext.config, context).switchSession(
     actionContext.scope,
     message?.sessionId,
@@ -144,9 +161,11 @@ async function handleBridgeStatus({ context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
+  const identityState = buildIdentityState(config, identity, connection, trustedPairing.oauthTokenState);
+  const instanceProvider = buildInstanceProviderState(config, identityState);
 
   return ok({
-    bridge: await readBridgeStatus({ config, module, connection, context }),
+    bridge: await readProviderStatus({ config, module, connection, identityState, instanceProvider, context }),
     module
   });
 }
@@ -155,11 +174,9 @@ async function handleListSessions({ message, context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
-  const identityState = buildIdentityState(config, identity, connection);
+  const identityState = buildIdentityState(config, identity, connection, trustedPairing.oauthTokenState);
   const instanceProvider = buildInstanceProviderState(config, identityState);
-  const bridge = shouldReadBridge(identityState, instanceProvider)
-    ? await readBridgeStatus({ config, module, connection, context })
-    : buildBridgeStatus(config, module.enabled);
+  const bridge = await readProviderStatus({ config, module, connection, identityState, instanceProvider, context });
   const scope = buildScope(config, identity, connection);
   const gate = derivePanelState(module, connection, bridge, identityState, instanceProvider);
   const instanceId = requestedInstanceId(message);
@@ -186,6 +203,18 @@ async function handleListSessions({ message, context }) {
       buildFixtureSessionsPayload({ bridge, scope, viewer: identityState.viewer }),
       instanceId
     ));
+  }
+
+  if (instanceProvider.provider === 'bondie-control-plane') {
+    return ok(await buildControlPlaneSessionsPayload({
+      config,
+      context,
+      identityState,
+      instanceProvider,
+      bridge,
+      scope,
+      instanceId
+    }));
   }
 
   const result = await createSessionAdapter(config, context).listSessions(scope);
@@ -222,7 +251,7 @@ async function handleScopeCurrent({ context }) {
 async function handleIdentityStatus({ context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
-  const identityState = buildIdentityState(config, identity, connection);
+  const identityState = buildIdentityState(config, identity, connection, trustedPairing.oauthTokenState);
 
   return ok({
     viewer: identityState.viewer,
@@ -237,12 +266,26 @@ async function handleInstancesList({ context }) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
-  const identityState = buildIdentityState(config, identity, connection);
+  const identityState = buildIdentityState(config, identity, connection, trustedPairing.oauthTokenState);
   const instanceProvider = buildInstanceProviderState(config, identityState);
-  const bridge = shouldReadBridge(identityState, instanceProvider)
-    ? await readBridgeStatus({ config, module, connection, context })
-    : buildBridgeStatus(config, module.enabled);
+  const bridge = await readProviderStatus({ config, module, connection, identityState, instanceProvider, context });
   const scope = buildScope(config, identity, connection);
+
+  if (instanceProvider.provider === 'bondie-control-plane' && instanceProvider.ready) {
+    const result = await createControlPlaneAdapter(config, context).listInstances();
+    return ok({
+      state: result.ok ? result.state : result.state || 'permission_unresolved',
+      viewer: result.viewer?.viewer || identityState.viewer,
+      identity: publicIdentityState(identityState),
+      instanceProvider: {
+        ...instanceProvider,
+        state: result.ok ? result.state : result.state || instanceProvider.state,
+        reason: result.ok ? '' : redactDiagnostic(result.message || result.error || result.reason)
+      },
+      instances: result.instances || [],
+      updatedAt: new Date().toISOString()
+    });
+  }
 
   return ok({
     state: identityState.authenticated ? instanceProvider.state : 'identity_required',
@@ -272,6 +315,7 @@ async function handleSettingsGet({ context }) {
       sidePanelInstanceProvider: config.sidePanelInstanceProvider,
       sidePanelLocalRelationshipType: config.sidePanelLocalRelationshipType,
       sidePanelControlPlaneBaseUrlConfigured: Boolean(config.sidePanelControlPlaneBaseUrl),
+      sidePanelControlPlaneTokenConfigured: Boolean(config.sidePanelControlPlaneDevToken),
       sidePanelWorkspaceId: config.sidePanelWorkspaceId,
       sidePanelOrganization: config.sidePanelOrganization,
       sidePanelRouteType: config.sidePanelRouteType,
@@ -283,17 +327,21 @@ async function handleSettingsGet({ context }) {
 }
 
 async function readPanelContext(context) {
-  const [storedConfig, identity, trustedPairing] = await Promise.all([
+  const [storedConfig, identity, trustedPairing, oauthTokenState] = await Promise.all([
     context.getConfig(SIDE_PANEL_CONFIG_KEYS),
     context.ensureHostIdentity(),
-    context.getTrustedPairingState()
+    context.getTrustedPairingState(),
+    context.getSidePanelOAuthToken ? context.getSidePanelOAuthToken() : null
   ]);
 
   return {
     config: normalizeConfig(storedConfig),
     coreStatus: context.getConnectionStatus(),
     identity,
-    trustedPairing
+    trustedPairing: {
+      ...trustedPairing,
+      oauthTokenState
+    }
   };
 }
 
@@ -301,11 +349,9 @@ async function readActionContext(context) {
   const { config, coreStatus, identity, trustedPairing } = await readPanelContext(context);
   const module = buildModuleStatus(config);
   const connection = buildConnectionStatus(coreStatus, identity, trustedPairing);
-  const identityState = buildIdentityState(config, identity, connection);
+  const identityState = buildIdentityState(config, identity, connection, trustedPairing.oauthTokenState);
   const instanceProvider = buildInstanceProviderState(config, identityState);
-  const bridge = shouldReadBridge(identityState, instanceProvider)
-    ? await readBridgeStatus({ config, module, connection, context })
-    : buildBridgeStatus(config, module.enabled);
+  const bridge = await readProviderStatus({ config, module, connection, identityState, instanceProvider, context });
   const scope = buildScope(config, identity, connection);
 
   return {
@@ -336,6 +382,7 @@ function normalizeConfig(storedConfig) {
   config.sidePanelInstanceProvider = normalizeInstanceProvider(config.sidePanelInstanceProvider);
   config.sidePanelLocalRelationshipType = normalizeLocalRelationshipType(config.sidePanelLocalRelationshipType);
   config.sidePanelControlPlaneBaseUrl = cleanString(config.sidePanelControlPlaneBaseUrl);
+  config.sidePanelControlPlaneDevToken = cleanString(config.sidePanelControlPlaneDevToken);
   config.sidePanelWorkspaceId = cleanString(config.sidePanelWorkspaceId) || SIDE_PANEL_DEFAULT_CONFIG.sidePanelWorkspaceId;
   config.sidePanelOrganization = cleanString(config.sidePanelOrganization) || config.sidePanelWorkspaceId;
   config.sidePanelRouteType = normalizeRouteType(config.sidePanelRouteType);
@@ -458,15 +505,16 @@ function buildScope(config, identity, connection) {
   };
 }
 
-function buildIdentityState(config, identity, connection) {
+function buildIdentityState(config, identity, connection, oauthTokenState = null) {
   if (config.sidePanelIdentityMode === 'oauth') {
+    const authenticated = oauthTokenState?.authenticated === true;
     return {
       mode: 'oauth',
       required: true,
-      authenticated: false,
-      source: 'oauth',
-      viewer: null,
-      reason: 'oauth_adapter_not_configured'
+      authenticated,
+      source: cleanString(oauthTokenState?.provider) || 'oauth',
+      viewer: authenticated ? oauthTokenState.viewer : null,
+      reason: authenticated ? '' : cleanString(oauthTokenState?.error || oauthTokenState?.state) || 'oauth_adapter_not_configured'
     };
   }
 
@@ -526,9 +574,9 @@ function buildInstanceProviderState(config, identityState) {
     }
     return {
       provider: 'bondie-control-plane',
-      state: 'permission_unresolved',
-      ready: false,
-      reason: 'control_plane_adapter_not_implemented'
+      state: 'ready',
+      ready: true,
+      reason: ''
     };
   }
 
@@ -540,8 +588,75 @@ function buildInstanceProviderState(config, identityState) {
   };
 }
 
-function shouldReadBridge(identityState, instanceProvider) {
-  return Boolean(identityState.authenticated && instanceProvider.provider === 'legacy-session-bridge');
+async function readProviderStatus({ config, module, connection, identityState, instanceProvider, context }) {
+  if (instanceProvider.provider === 'bondie-control-plane') {
+    return await readControlPlaneStatus({ config, module, context });
+  }
+  if (identityState.authenticated && instanceProvider.provider === 'legacy-session-bridge') {
+    return await readBridgeStatus({ config, module, connection, context });
+  }
+  return buildBridgeStatus(config, module.enabled);
+}
+
+async function readControlPlaneStatus({ config, module, context }) {
+  const bridge = buildControlPlaneBridgeStatus(config, module.enabled);
+  if (!module.enabled) {
+    return bridge;
+  }
+
+  const result = await createControlPlaneAdapter(config, context).status();
+  const readiness = result.controlPlane || {};
+  return {
+    ...bridge,
+    state: result.ok ? 'available' : result.state || readiness.state || bridge.state,
+    configured: readiness.baseUrlConfigured === true && readiness.authConfigured === true,
+    baseUrlConfigured: readiness.baseUrlConfigured === true,
+    authConfigured: readiness.authConfigured === true,
+    permission: readiness.permission || bridge.permission,
+    available: result.ok === true,
+    error: result.ok === false ? redactDiagnostic(result.message || result.error) : '',
+    remote: result.ok === true
+      ? {
+          bridgeId: 'bondie-control-plane',
+          bridgeName: 'Bondie Control Plane',
+          adapter: { adapter: 'bondie-control-plane', ready: true },
+          capabilities: ['instances.list', 'sessions.list', 'sessions.new', 'sessions.switch']
+        }
+      : null
+  };
+}
+
+function buildControlPlaneBridgeStatus(config, moduleEnabled) {
+  const baseUrlConfigured = Boolean(config.sidePanelControlPlaneBaseUrl);
+  const authConfigured = Boolean(config.sidePanelControlPlaneDevToken);
+  const configured = baseUrlConfigured && authConfigured;
+  let state = 'missing_config';
+  if (!moduleEnabled) {
+    state = 'disabled';
+  } else if (!baseUrlConfigured) {
+    state = 'missing_base_url';
+  } else if (!authConfigured) {
+    state = 'missing_auth';
+  } else if (configured) {
+    state = 'configured';
+  }
+
+  return {
+    adapter: 'bondie-control-plane',
+    state,
+    configured,
+    baseUrlConfigured,
+    authConfigured,
+    timeoutMs: config.sessionBridgeTimeoutMs,
+    permission: {
+      required: configured,
+      granted: false,
+      origin: ''
+    },
+    available: false,
+    remote: null,
+    error: ''
+  };
 }
 
 function buildInstanceSummaries({ config, bridge, scope, identityState, instanceProvider }) {
@@ -549,6 +664,9 @@ function buildInstanceSummaries({ config, bridge, scope, identityState, instance
     return [];
   }
   if (instanceProvider && !instanceProvider.ready) {
+    return [];
+  }
+  if (instanceProvider?.provider === 'bondie-control-plane') {
     return [];
   }
   if (config.sidePanelBondieFixtureMode === 'fixtures') {
@@ -573,6 +691,94 @@ function buildLegacySessionGroups({ result, bridge, scope }) {
       }
     ],
     sessions
+  };
+}
+
+async function buildControlPlaneSessionsPayload({ config, context, identityState, instanceProvider, bridge, scope, instanceId }) {
+  const adapter = createControlPlaneAdapter(config, context);
+  const instancesResult = await adapter.listInstances();
+  if (!instancesResult.ok) {
+    return filterSessionsPayloadByInstance({
+      state: instancesResult.state || 'permission_unresolved',
+      viewer: identityState.viewer,
+      identity: publicIdentityState(identityState),
+      instanceProvider: {
+        ...instanceProvider,
+        state: instancesResult.state || instanceProvider.state,
+        reason: redactDiagnostic(instancesResult.message || instancesResult.error || instancesResult.reason)
+      },
+      bridge,
+      scope,
+      instances: [],
+      groups: [],
+      sessions: [],
+      requestedInstanceId: instanceId,
+      currentBinding: null,
+      bridgeId: 'bondie-control-plane',
+      unresolved: true,
+      error: redactDiagnostic(instancesResult.message || instancesResult.error || instancesResult.reason),
+      updatedAt: new Date().toISOString()
+    }, instanceId);
+  }
+
+  const allInstances = instancesResult.instances || [];
+  const targetId = cleanString(instanceId);
+  const visibleInstances = targetId
+    ? allInstances.filter((instance) => instance.instance_id === targetId)
+    : allInstances;
+  if (targetId && visibleInstances.length === 0) {
+    return {
+      state: 'instance_unavailable',
+      viewer: instancesResult.viewer?.viewer || identityState.viewer,
+      identity: publicIdentityState(identityState),
+      instanceProvider,
+      bridge,
+      scope,
+      instances: [],
+      groups: [],
+      sessions: [],
+      requestedInstanceId: targetId,
+      currentBinding: null,
+      bridgeId: 'bondie-control-plane',
+      unresolved: true,
+      error: 'instance_unavailable',
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  const groups = await Promise.all(visibleInstances.map(async (instance) => {
+    const result = await adapter.listSessions(instance);
+    return {
+      instance_id: instance.instance_id,
+      instance,
+      state: result.state || 'unknown',
+      visibility_policy: instance.visibility_policy,
+      actions_enabled: instance.actions_enabled !== false && result.ok !== false,
+      sessions: (result.sessions || []).map((session) => ({
+        ...session,
+        actions_enabled: session.actions_enabled !== false && instance.actions_enabled !== false && result.ok !== false
+      })),
+      error: result.ok === false ? redactDiagnostic(result.message || result.error || result.reason) : ''
+    };
+  }));
+  const sessions = groups.flatMap((group) => group.sessions || []);
+
+  return {
+    state: sessions.length ? 'ready' : 'empty_sessions',
+    viewer: instancesResult.viewer?.viewer || identityState.viewer,
+    identity: publicIdentityState(identityState),
+    instanceProvider,
+    bridge,
+    scope,
+    instances: visibleInstances,
+    groups,
+    sessions,
+    requestedInstanceId: targetId,
+    currentBinding: null,
+    bridgeId: 'bondie-control-plane',
+    unresolved: false,
+    error: '',
+    updatedAt: new Date().toISOString()
   };
 }
 
@@ -608,6 +814,32 @@ function attachInstanceToSession(session, instance, actionsEnabled) {
     relationship_label: instance.relationship_label,
     actions_enabled: actionsEnabled
   };
+}
+
+async function runControlPlaneAction(action, actionContext, options) {
+  const instanceId = cleanString(options.instanceId);
+  const adapter = createControlPlaneAdapter(actionContext.config, options.context);
+  const instancesResult = await adapter.listInstances();
+  if (!instancesResult.ok) {
+    return buildBlockedActionPayload(action, {
+      ...actionContext,
+      gate: instancesResult.state || 'permission_unresolved',
+      instanceId
+    });
+  }
+  const instance = (instancesResult.instances || []).find((entry) => entry.instance_id === instanceId);
+  if (!instance) {
+    return buildBlockedActionPayload(action, {
+      ...actionContext,
+      gate: 'instance_unavailable',
+      instanceId
+    });
+  }
+
+  const result = action === 'new'
+    ? await adapter.newConversation(instance, { messageCardStyle: options.messageCardStyle })
+    : await adapter.switchSession(instance, options.sessionId, { messageCardStyle: options.messageCardStyle });
+  return buildActionPayload(action, { ...actionContext, instanceId }, result);
 }
 
 function buildFixtureSessionsPayload({ bridge, scope, viewer }) {
@@ -789,11 +1021,14 @@ function derivePanelState(module, connection, bridge, identityState, instancePro
   if (!module.enabled) {
     return 'disabled';
   }
-  if (!connection.paired) {
-    return 'unpaired';
-  }
-  if (!connection.online) {
-    return 'offline';
+  const usesControlPlane = instanceProvider?.provider === 'bondie-control-plane';
+  if (!usesControlPlane) {
+    if (!connection.paired) {
+      return 'unpaired';
+    }
+    if (!connection.online) {
+      return 'offline';
+    }
   }
   if (identityState && !identityState.authenticated) {
     return 'identity_required';
@@ -810,7 +1045,14 @@ function derivePanelState(module, connection, bridge, identityState, instancePro
   if (bridge.state === 'invalid_base_url') {
     return 'missing_config';
   }
-  if (bridge.state === 'unauthorized' || bridge.state === 'timeout' || bridge.state === 'fetch_failed' || bridge.state === 'http_error' || bridge.state === 'unavailable') {
+  if (bridge.state === 'unauthorized'
+    || bridge.state === 'timeout'
+    || bridge.state === 'fetch_failed'
+    || bridge.state === 'http_error'
+    || bridge.state === 'unavailable'
+    || bridge.state === 'control_plane_http_error'
+    || bridge.state === 'control_plane_timeout'
+    || bridge.state === 'control_plane_unavailable') {
     return 'bridge_unavailable';
   }
   return 'ready';
@@ -829,6 +1071,9 @@ function deriveActionInstanceGate(actionContext, instanceId) {
   if (actionContext.config.sidePanelBondieFixtureMode === 'fixtures') {
     return 'fixture_read_only';
   }
+  if (actionContext.instanceProvider?.provider === 'bondie-control-plane') {
+    return cleanString(instanceId) ? 'ready' : 'instance_unavailable';
+  }
   const targetId = cleanString(instanceId);
   if (!targetId || targetId === 'legacy-session-bridge') {
     return 'ready';
@@ -840,6 +1085,18 @@ function createSessionAdapter(config, context) {
   return new OpenClawSessionAdapter({
     config,
     chromeApi: context.chrome
+  });
+}
+
+function createControlPlaneAdapter(config, context) {
+  return new BondieControlPlaneAdapter({
+    config,
+    chromeApi: context?.chrome,
+    getAccessToken: async () => {
+      const tokenState = context?.getSidePanelOAuthToken ? await context.getSidePanelOAuthToken() : null;
+      return tokenState?.accessToken || '';
+    },
+    fetchImpl: context?.fetchImpl || null
   });
 }
 

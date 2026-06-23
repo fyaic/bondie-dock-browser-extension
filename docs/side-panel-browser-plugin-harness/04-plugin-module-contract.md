@@ -114,7 +114,7 @@ chrome.runtime.sendMessage({
 
 Phase 7C 起，生产 Bondie Control Plane contract 固化在
 `extension/src/modules/bondie-side-panel/control-plane-contract.js`。Control Plane fetch 边界固化在
-`extension/src/modules/bondie-side-panel/control-plane-adapter.js`。当前 adapter skeleton 可用 fake fetch 验证 readiness、identity、instances、sessions、new/switch action，但还没有接入 `module.js` runtime。
+`extension/src/modules/bondie-side-panel/control-plane-adapter.js`。当前 adapter 已接入 `module.js` runtime；在 `sidePanelIdentityMode=oauth` + `sidePanelInstanceProvider=bondie-control-plane` 且 Control Plane URL/token 配置完整时，status/list/new/switch 都通过 Control Plane adapter 路由。缺 URL、缺 token、缺 host permission、未登录或实例未授权时仍 fail closed，不回退 legacy Bridge。
 
 Control Plane endpoint 草案：
 
@@ -131,7 +131,7 @@ POST /v1/bondie-instances/{instance_id}/sessions/switch
 - `subordinate` 必须对应 `all_sessions`。
 - `communication` 必须对应 `participant_sessions`。
 - relationship / visibility 缺失或不匹配时 fail closed。
-- adapter 未接入前，`bondie-control-plane` provider 不允许 fallback 到 legacy Session Bridge。
+- `bondie-control-plane` provider 不允许 fallback 到 legacy Session Bridge。
 - new/switch 完成态只看 explicit confirmation 字段，不能只看 HTTP 200 或 `ok=true`。
 - 缺 Control Plane URL 或 OAuth token 时 adapter 不发请求。
 

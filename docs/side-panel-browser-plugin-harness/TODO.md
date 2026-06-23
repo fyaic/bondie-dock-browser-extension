@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 10 - Bondie Dock 产品化与 Control Plane 主线启动。Phase 9 local Bondie visibility functional wiring 已完成；已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter skeleton、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 已补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`，只显示 Veil/周威 route 相关 sessions。2026-06-23 已将浏览器插件用户可见产品名定为 Bondie Dock，并新增命名/系统边界文档。`fyaic/bondie-control-plane` private 仓库已创建并推送初始服务骨架，且已补 bridge health readiness、GitHub Actions CI smoke、legacy Session Bridge 字段映射和真实 sessions proxy smoke。当前 `BondieControlPlaneAdapter` 仍未接入真实 OAuth runtime，后续等待登录授权系统文档后接 token provider。
+当前阶段：Phase 10 - Bondie Dock 产品化与 Control Plane runtime 接线。Phase 9 local Bondie visibility functional wiring 已完成；已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 已补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`，只显示 Veil/周威 route 相关 sessions。2026-06-23 已将浏览器插件用户可见产品名定为 Bondie Dock，并新增命名/系统边界文档。`fyaic/bondie-control-plane` private 仓库已创建并推送初始服务骨架，且已补 bridge health readiness、GitHub Actions CI smoke、legacy Session Bridge 字段映射和真实 sessions proxy smoke。当前 Bondie Dock 已在 `sidePanelIdentityMode=oauth` + `sidePanelInstanceProvider=bondie-control-plane` + Control Plane dev token 下接入 runtime，模块级只读 smoke 可通过 Control Plane 拉取 Bondie A 全量 27 条 sessions、Bondie B 服务关系 0 条 sessions；生产 OAuth token provider 仍等待登录授权系统文档。
 
 ## 已完成
 
@@ -62,11 +62,11 @@
 - [x] Phase 7A Chrome for Testing real regression：临时 extension copy + dummy gateway online gate + official Bridge，`Ready`、26 个真实 session cards、2 个 instance chips、1 个 group、无横向溢出。截图：`/tmp/openclaw-sidepanel-phase7-real-20260618-v3.png`。
 - [x] Phase 7A Chrome for Testing fixture smoke：Bondie A/B/C 三实例、4 个 fixture session cards、4 个 instance chips、3 个 groups、从属 `查看全部` / 沟通 `仅相关` badge 可见、new/switch disabled、Bondie B chip 过滤后 1 个 session、无横向溢出。截图：`/tmp/openclaw-sidepanel-phase7-fixtures-20260618-v3.png`。
 - [x] Phase 7B message contract smoke：`list({instanceId:"legacy-session-bridge"})` 返回 26 个真实 sessions；`list({instanceId:"bondie-b"})` 在 legacy mode 返回 `instance_unavailable`；fixture `list({instanceId:"bondie-b"})` 返回 1 个 session；fixture `new({instanceId:"bondie-b"})` 返回 `fixture_read_only`。
-- [x] Phase 7B identity gate：新增 `sidePanelIdentityMode`，`legacy-paired` 保留真实 Bridge 路径，`oauth` 在 adapter 未接入前 fail closed 为 `identity_required`。
-- [x] Phase 7B provider gate：新增 `sidePanelInstanceProvider`，`legacy-session-bridge` 保留真实 Bridge 路径，`bondie-control-plane` 在 OAuth/control-plane adapter 未接入前 fail closed，不回退 legacy sessions。
+- [x] Phase 7B identity gate：新增 `sidePanelIdentityMode`，`legacy-paired` 保留真实 Bridge 路径；Phase 10 已补 dev-token provider，生产 OAuth 仍待接入。
+- [x] Phase 7B provider gate：新增 `sidePanelInstanceProvider`，`legacy-session-bridge` 保留真实 Bridge 路径；`bondie-control-plane` 仍不回退 legacy sessions，Phase 10 已接 runtime adapter。
 - [x] Phase 7C Control Plane contract：新增 `control-plane-contract.js` 和 `12-control-plane-contract.md`，冻结生产 API / payload / confirmation 规则。
 - [x] Phase 7C contract smoke 脚本：新增 `scripts/test-control-plane-contract.mjs`，后续可直接复跑。
-- [x] Phase 7C Control Plane adapter skeleton：新增 `control-plane-adapter.js`，支持 readiness、identity、instances、instance sessions、new/switch action 的 fake-fetch 验证。
+- [x] Phase 7C Control Plane adapter：新增 `control-plane-adapter.js`，支持 readiness、identity、instances、instance sessions、new/switch action 的 fake-fetch 验证；Phase 10 已接入 module runtime。
 - [x] 本地提交 Phase 7C Control Plane adapter skeleton：`9b3fe96`。
 - [x] Phase 8 Bridge Registry schema：新增 `13-bridge-registry-schema.md`，拆清 instance、relationship、bridge、secret、binding、health snapshot。
 - [x] Phase 8 Device Onboarding checklist：新增 `14-device-onboarding-checklist.md`，整理设备安装、Tailscale、smoke、registry、回滚。
@@ -86,6 +86,8 @@
 - [x] Phase 10 Control Plane readiness：新增 bridge health projection，`/v1/bondie-instances` 和 `/v1/bridge-health` 可返回安全 health/status/actions projection，token/endpoint 不下发浏览器。
 - [x] Phase 10 Control Plane CI：新增 GitHub Actions smoke，push/PR 自动运行 `npm test` 和 `npm run check`。
 - [x] Phase 10 Control Plane Bridge proxy：修复 relationship scope 到旧 Session Bridge `wecom_user_id` 等字段的映射；带本机 `SESSION_BRIDGE_TOKEN` smoke 下，`bondie-a/all_sessions` 可返回 25 条真实 sessions，`bondie-b/participant_sessions` 按示例 scope 返回 0 条且无错误。
+- [x] Phase 10 Bondie Dock runtime adapter：`bondie-control-plane` provider 已接入 module runtime，status/list/new/switch 通过 Control Plane adapter 路由；缺 URL/token/OAuth/host permission 时仍 fail closed，不回退 legacy Bridge。
+- [x] Phase 10 Dock -> Control Plane 只读 smoke：临时本地 Control Plane `127.0.0.1:8790` + dev token 下，`sidePanel.status` 返回 `ready`，合集返回 2 个实例、27 条 sessions；Bondie A `all_sessions` 返回 27 条，Bondie B `participant_sessions` 返回 0 条。
 
 ## Phase 10 Control Plane 实现草案
 
@@ -98,7 +100,9 @@
 - [x] 增加 bridge health aggregation / stale readiness。
 - [x] 增加 GitHub Actions CI smoke。
 - [x] 对齐旧 Session Bridge WeCom-shaped binding 字段，验证真实 sessions proxy。
-- [ ] Bondie Dock provider 切到 `bondie-control-plane` 后，验证 ABC 多实例合集和权限过滤。
+- [x] Bondie Dock provider 切到 `bondie-control-plane` 后，验证多实例合集和权限过滤的本机只读路径。
+- [ ] 等待登录授权系统文档后，把 dev token provider 替换为生产 OAuth token provider。
+- [ ] 增加真实 Chrome side panel 手动 gate：加载最新 unpacked extension，配置 Control Plane URL/dev token，授权 host permission 后确认 UI 文案、实例切换和会话列表。
 
 ## Linear 树
 
@@ -199,11 +203,11 @@
 - [x] 旧仓库 `https://github.com/veil-chow-fyaic/openclaw-session-bridge.git` 已改为 `legacy-origin`，只作历史参考。
 - [x] 提交并 push Session Bridge 最新代码到 `fyaic/bondie-openclaw-session-bridge`，远端 `main` 为 `91fcca8`。
 - [x] 设计并实现 extension message-level instance contract：`list/new/switch({ instanceId })`。
-- [x] 新增 identity mode gate：`legacy-paired` / `oauth`，OAuth mode 未接入 adapter 前 fail closed。
-- [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`，control-plane mode 未接入 adapter 前 fail closed。
+- [x] 新增 identity mode gate：`legacy-paired` / `oauth`；Phase 10 已补 dev-token runtime，生产 OAuth 待接。
+- [x] 新增 instance provider gate：`legacy-session-bridge` / `bondie-control-plane`；Phase 10 已接 Control Plane runtime adapter。
 - [x] 设计 production control-plane instance API：`list/new/switch({ instanceId })`。
 - [x] 新增 Control Plane contract helper：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer。
-- [x] 新增 Control Plane adapter skeleton：缺 URL/缺 token 不发请求，fake fetch 可验证生产 endpoint 和 confirmation gate。
+- [x] 新增 Control Plane adapter/runtime：缺 URL/缺 token 不发请求，fake fetch 和本地 Control Plane smoke 可验证生产 endpoint、权限过滤和 confirmation gate。
 - [x] 增加 fail-closed tests：未 OAuth、仅 pairing、无 relationship、沟通关系越权。
 
 ## Phase 8 Bondie 设备 Bridge 与标准分发草案

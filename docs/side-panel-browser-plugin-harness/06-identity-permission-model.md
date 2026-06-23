@@ -171,6 +171,8 @@ POST /v1/agent-instances/{instance_id}/switch-session
 
 该实现不是生产 OAuth；它的作用是防止把 device pairing 误当作用户身份，并为后续 OAuth/control plane adapter 留出明确边界。
 
+2026-06-23 Phase 10 更新：`oauth` 模式已可通过 background dev-token provider 进入 Bondie Control Plane runtime，用于本地 smoke 和人工测试；生产 OAuth token 获取、刷新、登出和 scope 仍等待登录授权系统文档后实现。
+
 下一阶段建议：
 
 1. 在 Side Panel 状态中加入 `identity_required` 和 `permission_unresolved`。

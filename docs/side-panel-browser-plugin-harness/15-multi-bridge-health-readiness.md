@@ -245,7 +245,7 @@ else:
 
 ## 当前落地状态
 
-- Browser extension 已有 `BondieControlPlaneAdapter` skeleton，但尚未接入 runtime。
+- Browser extension 已有 `BondieControlPlaneAdapter` runtime，并已通过 Control Plane dev token 的模块级只读 smoke。
 - Contract smoke 已覆盖缺 URL、缺 token、权限不匹配过滤和 message layer OAuth fail-closed。
-- Control Plane 服务端和 health aggregator 尚未实现。
-- 本文作为后续 Control Plane / registry issue 的实现边界。
+- Control Plane 服务端已实现 bridge health projection，并把 stale/unavailable 映射为 action-disabled 的安全实例投影。
+- 本文继续作为后续多设备 registry、真实 OAuth 和跨设备部署 issue 的实现边界。

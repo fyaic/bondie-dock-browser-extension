@@ -213,9 +213,9 @@ Phase 7B 已完成扩展消息层的最小 contract：
 - legacy direct Bridge 只允许空 instance 或 `legacy-session-bridge`；未知 instance 返回 `instance_unavailable`。
 - fixture `new/switch({ instanceId })` 返回 `fixture_read_only`，不调用真实 Bridge。
 - Side Panel UI 执行 new/switch 时会带上当前可操作 instance id。
-- `sidePanelIdentityMode` 已落地：默认 `legacy-paired` 保留真实 Bridge 路径，`oauth` 模式在 OAuth adapter 未接入前返回 `identity_required`，不列 sessions/instances。
-- `sidePanelInstanceProvider` 已落地：默认 `legacy-session-bridge` 保留现有路径，`bondie-control-plane` 在 OAuth/control-plane adapter 未接入前 fail closed，不回退 legacy sessions。
-- Phase 7C 已固化 Control Plane contract helper 和 adapter skeleton：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer、fake-fetch 验证。当前 adapter 尚未接入 `module.js` runtime，runtime 仍 fail closed。
+- `sidePanelIdentityMode` 已落地：默认 `legacy-paired` 保留真实 Bridge 路径，`oauth` 模式要求 OAuth/dev-token token provider，未认证时返回 `identity_required`。
+- `sidePanelInstanceProvider` 已落地：默认 `legacy-session-bridge` 保留现有路径，`bondie-control-plane` 已接入 Control Plane runtime adapter，不回退 legacy sessions。
+- Phase 7C/10 已固化并接入 Control Plane contract helper 和 runtime adapter：endpoint builder、OAuth header builder、identity/instances/sessions/action normalizer、fake-fetch 验证和本地 Control Plane 只读 smoke 均已通过。生产 OAuth provider 仍等待登录授权系统文档。
 
 ### Phase 7A: Fixture UI
 
