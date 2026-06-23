@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OpenClaw Side Panel</title>
+    <title>Bondie Dock</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="sidepanel.css">
   </head>
@@ -13,7 +13,7 @@
         <div class="brand sidepanel-brand">
           <span class="brand-mark" aria-hidden="true"></span>
           <span>
-            <strong>OpenClaw</strong>
+            <strong>Bondie Dock</strong>
             <small>Side Panel</small>
           </span>
         </div>
@@ -26,10 +26,10 @@
 
       <section class="hero-status" aria-live="polite">
         <span id="stateKicker" class="state-kicker">启动中</span>
-        <h1 id="stateTitle">正在读取 OpenClaw 状态</h1>
+        <h1 id="stateTitle">正在读取 Bondie 状态</h1>
         <p id="stateSummary">Side Panel 会通过后台模块获取连接、配对和配置状态。</p>
         <div class="state-actions">
-          <button id="connectOpenClaw" class="primary-action" type="button">连接 OpenClaw</button>
+          <button id="connectOpenClaw" class="primary-action" type="button">连接 Bondie</button>
         </div>
       </section>
 
@@ -39,7 +39,7 @@
           <strong id="pairingValue">检查中</strong>
         </div>
         <div class="status-row">
-          <span>OpenClaw 连接</span>
+          <span>Bondie 连接</span>
           <strong id="onlineValue">检查中</strong>
         </div>
         <div class="status-row">
@@ -55,7 +55,7 @@
       <section class="section sidepanel-section session-control-section">
         <div class="section-heading">
           <div>
-            <h2>OpenClaw 会话</h2>
+            <h2>Bondie 会话</h2>
             <p id="actionHint">等待 Session Bridge adapter</p>
           </div>
         </div>
@@ -66,7 +66,7 @@
           <button id="switchSession" type="button" disabled>恢复所选</button>
         </div>
         <div id="sessionsEmpty" class="sessions-empty">等待会话列表</div>
-        <ol id="sessionsList" class="sessions-list" aria-label="OpenClaw 会话列表"></ol>
+        <ol id="sessionsList" class="sessions-list" aria-label="Bondie 会话列表"></ol>
         <div id="operationResult" class="operation-result" hidden></div>
       </section>
 

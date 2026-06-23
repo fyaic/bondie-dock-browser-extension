@@ -1,4 +1,4 @@
-# 快速安装 OpenClaw Browser Host
+# 快速安装 Bondie Dock
 
 日期：2026-06-09
 
@@ -17,13 +17,13 @@ openclaw-browser-host-extension-0.1.0-alpha.12.zip
 Windows:
 
 ```text
-C:\OpenClaw\BrowserHost
+C:\Bondie\Dock
 ```
 
 macOS:
 
 ```text
-~/Applications/OpenClawBrowserHost
+~/Applications/BondieDock
 ```
 
 注意：Chrome / Edge 加载的是解压后的目录，不是 zip 文件本身。
@@ -43,7 +43,7 @@ chrome://extensions
 6. 确认扩展列表里出现：
 
 ```text
-OpenClaw Browser Host
+Bondie Dock
 ```
 
 ## Edge 安装
@@ -61,7 +61,7 @@ edge://extensions
 6. 确认扩展列表里出现：
 
 ```text
-OpenClaw Browser Host
+Bondie Dock
 ```
 
 ## 首次配置
@@ -72,7 +72,7 @@ OpenClaw Browser Host
 Gateway URL: wss://<openclaw-gateway>
 Token mode: GatewayToken / manual approve
 Token: <gateway-token>
-Node name: OpenClaw Browser Host
+Node name: Bondie Dock
 Protocol: OpenClaw Node compatible
 ```
 

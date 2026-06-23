@@ -25,12 +25,13 @@
 | `16-handoff-2026-06-18.md` | 当前工作现场、commit、验证和后续任务交接 |
 | `17-oauth-token-interface.md` | OAuth token provider-neutral 接口、状态机和 fail-closed 规则 |
 | `18-system-boundary-and-repo-plan.md` | Side Panel / Control Plane / Session Bridge 边界、独立仓库拆分和 bridge secret store 解释 |
+| `19-product-naming-and-system-map.md` | Bondie Dock 产品命名、对外叙事、仓库/服务边界和下一步推进顺序 |
 | `TODO.md` | 动态任务状态 |
 | `99-deviation-log.md` | 偏差、阻塞和已跳过事项 |
 
 ## 一句话方案
 
-在当前 Browser Host Extension 内新增可拆卸的 `openclaw-side-panel` feature module：它用 Chrome/Edge Side Panel 展示用户有权限访问的 Bondie/OpenClaw 实例和会话控制 UI，通过 background 的 identity、permission 和 session adapters 调本地/远程控制面，严格复用旧 B 侧的 scoped session、route-level new、generation-level switch 和 confirmation 语义，并在下一阶段扩展为 Bondie 多实例、从属/沟通关系权限模型。
+在 Bondie Dock 内新增可拆卸的 `openclaw-side-panel` feature module：它用 Chrome/Edge Side Panel 展示用户有权限访问的 Bondie/OpenClaw 实例和会话控制 UI，通过 background 的 identity、permission 和 session adapters 调本地/远程控制面，严格复用旧 B 侧的 scoped session、route-level new、generation-level switch 和 confirmation 语义，并在下一阶段扩展为 Bondie 多实例、从属/沟通关系权限模型。
 
 ## 新旧链路对比
 

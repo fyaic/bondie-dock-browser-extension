@@ -1,9 +1,9 @@
 {
   "id": "openclaw-side-panel",
-  "name": "OpenClaw Side Panel",
+  "name": "Bondie Dock Side Panel",
   "version": "0.1.0",
   "type": "extension-feature-module",
-  "description": "OpenClaw conversation control and page-context side panel for Browser Host.",
+  "description": "Bondie conversation control and page-context side panel for the browser extension.",
   "entry": "src/modules/openclaw-side-panel/module.js",
   "ui": {
     "sidePanel": "src/sidepanel/sidepanel.html"

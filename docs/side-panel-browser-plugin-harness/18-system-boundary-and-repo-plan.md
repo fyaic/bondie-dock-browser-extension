@@ -138,11 +138,11 @@ legacy-origin: https://github.com/veil-chow-fyaic/openclaw-session-bridge.git
 - launchd/systemd 标准分发。
 - `.env.production.example`、smoke 脚本、回滚 runbook。
 
-该仓库已按 private 创建，但本地提交和 push 仍需按 git 操作确认节奏执行。
+该仓库已按 private 创建并 push，后续继续按独立仓库节奏维护。
 
 ### Bondie Control Plane Repo
 
-建议后续独立仓库：
+已创建 private 独立仓库：
 
 ```text
 https://github.com/fyaic/bondie-control-plane.git
@@ -188,16 +188,16 @@ Session Bridge 仓库本地已新增并应持续维护：
 
 Control Plane 仓库应新增：
 
-- `docs/browser-side-panel-api.md`：面向 extension 的 API contract。
-- `docs/bridge-registry.md`：bridge registry 和 secret store。
-- `docs/session-visibility-policy.md`：从属/沟通关系过滤规则。
-- `docs/repo-cross-index.md`：三仓互链。
+- `docs/browser-side-panel-api.md`：面向 extension 的 API contract。（已建）
+- `docs/bridge-registry.md`：bridge registry 和 secret store。（已建）
+- `docs/session-visibility-policy.md`：从属/沟通关系过滤规则。（已建）
+- `docs/repo-cross-index.md`：三仓互链。（已建）
 
 ## 最小落地顺序
 
 1. 浏览器插件继续保持 `bondie-control-plane` provider fail closed，等待 OAuth token provider 文档。
 2. Session Bridge 仓库先标准化现有代码、补发布文档和 smoke，确认能部署到多台 Bondie 设备。
-3. Control Plane 仓库建最小 API：OAuth stub、relationship fixtures、bridge registry fixtures、sessions proxy。
+3. Control Plane 仓库建最小 API：dev token identity stub、relationship fixtures、bridge registry fixtures、sessions proxy。（已完成初始骨架）
 4. 浏览器插件接入 Control Plane runtime adapter，但默认只在 OAuth ready 和 Control Plane URL 配好时启用。
 5. 用 A/B/C 三个 fixture + 至少一台真实 bridge 做端到端 smoke。
 6. 将 Session Bridge 本地文档和标准分发更新提交，并按发布节奏 push 到 `fyaic/bondie-openclaw-session-bridge`。

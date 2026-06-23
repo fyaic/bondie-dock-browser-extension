@@ -1,10 +1,12 @@
-# OpenClaw Browser Host Extension
+# Bondie Dock
 
-OpenClaw Browser Host Extension 是新的浏览器插件主线，用于替代或补充之前的 Windows `Bondie.exe` 客户侧宿主方案。
+Bondie Dock（原 OpenClaw Browser Host Extension）是 Bondie / OpenClaw 的浏览器侧产品入口，用于替代或补充之前的 Windows `Bondie.exe` 客户侧宿主方案。
 
-0.1.x 阶段目标是在用户安装 Chrome / Edge 插件后，让 OpenClaw 能安全地触达用户常用浏览器上下文，包括通知、当前页面信息、用户确认、下载记录摘要和页面内容读取。
+0.1.x 阶段目标是在用户安装 Chrome / Edge 插件后，让 Bondie 能安全地触达用户常用浏览器上下文，包括通知、当前页面信息、用户确认、下载记录摘要、页面内容读取和 Side Panel 会话切换。
 
 2026-05-15 产品会议后，浏览器插件路线升级为“浏览器智能工作流 Agent 门户”。后续主线不再只是远程宿主，而是围绕 Pattern Memory、Context Capture 和 OpenClaw Recap 主动建议构建产品体验。会议需求整理见 [浏览器智能工作流 Agent 产品化需求整理](docs/product-requirements-2026-05-15.md)。
+
+2026-06-23 起，面向用户的浏览器插件产品名定为 Bondie Dock；工程和协议层仍保留 OpenClaw、browser-host、Session Bridge 等实现语义。命名与仓库边界见 [Bondie Dock 产品命名与系统边界](docs/side-panel-browser-plugin-harness/19-product-naming-and-system-map.md)。
 
 当前版本：`0.1.0-alpha.12`。
 
@@ -71,7 +73,7 @@ main
 
 ## 本地加载
 
-内测分发和快速安装见 [快速安装 OpenClaw Browser Host](docs/quick-install.md)。
+内测分发和快速安装见 [快速安装 Bondie Dock](docs/quick-install.md)。
 
 生成 zip 包：
 

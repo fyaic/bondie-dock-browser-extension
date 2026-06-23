@@ -28,7 +28,7 @@ bind('disconnect', { type: 'disconnect' });
 bind('notify', {
   type: 'notify',
   payload: {
-    title: 'OpenClaw Browser Host',
+    title: 'Bondie Dock',
     body: '浏览器插件通知测试'
   }
 });
@@ -41,8 +41,8 @@ bind('downloads', {
 bind('confirm', {
   type: 'userConfirm',
   payload: {
-    title: 'OpenClaw Browser Host',
-    message: '允许这次来自 OpenClaw 的测试确认请求吗？'
+    title: 'Bondie Dock',
+    message: '允许这次来自 Bondie Dock 的测试确认请求吗？'
   }
 });
 bind('savePattern', { type: 'saveCurrentPattern' });

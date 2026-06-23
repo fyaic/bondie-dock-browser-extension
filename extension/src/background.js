@@ -15,7 +15,7 @@ const DEFAULT_CONFIG = {
   gatewayUrl: '',
   token: '',
   authMode: 'gateway-token',
-  nodeName: 'OpenClaw Browser Host',
+  nodeName: 'Bondie Dock',
   protocol: 'node-compatible',
   autoConnect: false,
   contextCaptureEnabled: true,
@@ -535,7 +535,7 @@ function sendBrowserHostRegisterMessage(config, identity) {
     type: 'browser.host.register',
     protocolVersion: 1,
     hostId: identity.hostId,
-    hostName: config.nodeName || 'OpenClaw Browser Host',
+    hostName: config.nodeName || 'Bondie Dock',
     runtime: 'chrome-extension-mv3',
     token: config.token || undefined,
     capabilities: CAPABILITIES,
@@ -554,7 +554,7 @@ function startHeartbeat(config, identity) {
       sendNodeEvent('node.presence.alive', {
         trigger: 'connect',
         sentAtMs: Date.now(),
-        displayName: config.nodeName || 'OpenClaw Browser Host',
+        displayName: config.nodeName || 'Bondie Dock',
         version: chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version,
         platform: 'chrome-extension-mv3',
         deviceFamily: 'browser'
@@ -569,7 +569,7 @@ function startHeartbeat(config, identity) {
     const heartbeat = {
       type: 'browser.host.heartbeat',
       hostId: identity.hostId,
-      hostName: config.nodeName || 'OpenClaw Browser Host',
+      hostName: config.nodeName || 'Bondie Dock',
       sentAt: new Date().toISOString()
     };
     sendGatewayMessage(heartbeat);
@@ -701,7 +701,7 @@ async function sendOpenClawNodeConnect(config, challengePayload) {
         version: chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version,
         platform: 'browser',
         mode: 'node',
-        displayName: config.nodeName || 'OpenClaw Browser Host'
+        displayName: config.nodeName || 'Bondie Dock'
       },
       role: 'node',
       scopes: [],
@@ -2051,7 +2051,7 @@ function buildAgentRequestMessage(capture) {
   const selected = capture.selectedText ? `\n\n选中文本：\n${capture.selectedText}` : '';
 
   return [
-    '来自 OpenClaw Browser Host 的主动网页上下文。',
+    '来自 Bondie Dock 的主动网页上下文。',
     '',
     instruction,
     '',

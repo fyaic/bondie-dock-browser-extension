@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "OpenClaw Browser Host",
-  "description": "Browser-side OpenClaw host for notifications, page context, and browser-scoped capabilities.",
+  "name": "Bondie Dock",
+  "description": "Browser-side Bondie dock for sessions, page context, notifications, and AI handoff.",
   "version": "0.1.12",
   "version_name": "0.1.0-alpha.12",
   "minimum_chrome_version": "116",
@@ -12,7 +12,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "OpenClaw Browser Host",
+    "default_title": "Bondie Dock",
     "default_popup": "src/popup.html"
   },
   "options_page": "src/options.html",

@@ -1,7 +1,7 @@
 import { OpenClawSessionAdapter } from './session-adapter.js';
 
 const MODULE_ID = 'openclaw-side-panel';
-const MODULE_NAME = 'OpenClaw Side Panel';
+const MODULE_NAME = 'Bondie Dock Side Panel';
 const SIDE_PANEL_PATH = 'src/sidepanel/sidepanel.html';
 export const SIDE_PANEL_DEFAULT_CONFIG = {
   sidePanelEnabled: true,

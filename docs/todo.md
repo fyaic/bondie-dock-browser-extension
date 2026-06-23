@@ -160,7 +160,8 @@
 
 ## P2：品牌与分发
 
-- 决策插件产品名：继续 OpenClaw Browser Host，还是切换到 The Tailor / Bondie 子品牌。
+- 已决策插件产品名：面向用户使用 Bondie Dock；旧 OpenClaw Browser Host 只作为历史工程名保留。
+- 维护产品命名和系统边界文档，避免 Side Panel、Control Plane、Session Bridge 在对外叙事中混用。
 - 设计 The Tailor 工作室 Logo。
 - 准备 Chrome Web Store / Edge Add-ons 需要的：
   - 产品说明。

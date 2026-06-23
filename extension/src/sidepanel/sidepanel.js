@@ -48,12 +48,12 @@ const STATE_COPY = {
   },
   unpaired: {
     kicker: '等待配对',
-    title: '先完成 OpenClaw 设备配对',
-    summary: 'Browser Host 已准备好，但还没有可信设备身份可用于会话 scope。'
+    title: '先完成 Bondie 设备配对',
+    summary: 'Bondie Dock 已准备好，但还没有可信设备身份可用于会话 scope。'
   },
   offline: {
     kicker: '离线',
-    title: 'OpenClaw 当前不在线',
+    title: 'Bondie 当前不在线',
     summary: '设备已有配对记录，恢复 Gateway 连接后会继续检查 Session Bridge。'
   },
   missing_config: {
@@ -74,7 +74,7 @@ const STATE_COPY = {
   scope_unresolved: {
     kicker: 'Scope 未解析',
     title: '当前 scope 没有可用会话',
-    summary: 'Bridge 没有返回当前浏览器 scope 可访问的 OpenClaw 会话。'
+    summary: 'Bridge 没有返回当前浏览器 scope 可访问的 Bondie 会话。'
   },
   identity_required: {
     kicker: '等待身份',
@@ -103,7 +103,7 @@ const STATE_COPY = {
   },
   booting: {
     kicker: '启动中',
-    title: '正在读取 OpenClaw 状态',
+    title: '正在读取 Bondie 状态',
     summary: 'Side Panel 正在等待 background service worker 返回状态。'
   },
   error: {
@@ -169,7 +169,7 @@ async function connectOpenClaw() {
       renderOperation({
         state: 'failed',
         action: 'connect',
-        error: response?.error || 'OpenClaw 连接失败'
+        error: response?.error || 'Bondie 连接失败'
       });
     }
     await refreshStatus();
@@ -180,7 +180,7 @@ async function connectOpenClaw() {
       error: error.message
     });
   } finally {
-    elements.connectOpenClaw.textContent = '连接 OpenClaw';
+    elements.connectOpenClaw.textContent = '连接 Bondie';
     updateConnectButton(lastStatusPayload || {});
   }
 }
@@ -330,7 +330,7 @@ async function requestNewSession() {
     });
     return;
   }
-  if (!window.confirm('确认新开 OpenClaw 对话？后续消息会进入新的会话代际。')) {
+  if (!window.confirm('确认新开 Bondie 对话？后续消息会进入新的会话代际。')) {
     return;
   }
 
@@ -460,7 +460,7 @@ function updateConnectButton(payload) {
   const canConnect = ['unpaired', 'offline', 'missing_config', 'bridge_permission_required', 'bridge_unavailable'].includes(state);
   elements.connectOpenClaw.hidden = state === 'ready' || state === 'disabled';
   elements.connectOpenClaw.disabled = connection.connecting || !canConnect;
-  elements.connectOpenClaw.textContent = connection.connecting ? '连接中' : '连接 OpenClaw';
+  elements.connectOpenClaw.textContent = connection.connecting ? '连接中' : '连接 Bondie';
 }
 
 function renderSessions(payload) {
@@ -542,7 +542,7 @@ function sessionGroups(payload) {
   }
   const instance = (Array.isArray(payload.instances) && payload.instances[0]) || {
     instance_id: 'legacy-session-bridge',
-    display_name: 'OpenClaw',
+    display_name: 'Bondie',
     relationship_label: '当前 Bridge',
     visibility_label: '仅相关',
     status: payload.state === 'ready' ? 'online' : payload.state,
@@ -945,7 +945,7 @@ function pageDockHint(payload) {
   if (type === 'article') {
     return '文章页面可快速读懂、入库或深研';
   }
-  return '当前网页可作为 OpenClaw 上下文';
+  return '当前网页可作为 Bondie 上下文';
 }
 
 function pageKindText(contentType) {
@@ -1198,7 +1198,7 @@ function actionHint(payload) {
     return bridgeConfigHint(payload.bridge || {});
   }
   if (payload.state === 'offline') {
-    return '恢复 OpenClaw 连接后再操作会话';
+    return '恢复 Bondie 连接后再操作会话';
   }
   if (payload.state === 'unpaired') {
     return '完成设备配对后再操作会话';
@@ -1223,8 +1223,8 @@ function sessionsEmptyText(state, error) {
   const labels = {
     loading_sessions: '正在从 Session Bridge 加载 scoped sessions',
     disabled: '侧栏模块已禁用',
-    unpaired: '完成 OpenClaw 配对后再加载会话',
-    offline: 'OpenClaw 在线后再加载会话',
+    unpaired: '完成 Bondie 配对后再加载会话',
+    offline: 'Bondie 在线后再加载会话',
     missing_config: '补齐 Bridge URL 和 token 后再加载会话',
     bridge_permission_required: '授权 Bridge 地址后再加载会话',
     bridge_unavailable: 'Session Bridge 暂不可达',
@@ -1267,7 +1267,7 @@ function diagnosticsText(payload) {
 }
 
 function sessionTitle(session) {
-  return String(session.title || session.session_id || session.session_key || 'OpenClaw session').trim();
+  return String(session.title || session.session_id || session.session_key || 'Bondie session').trim();
 }
 
 function sessionIdentity(session) {
