@@ -31,7 +31,7 @@
 - [x] 拆 Phase 3 实现 issue：Session Adapter MVP (`AIC-2915`)。
 - [x] 将 Phase 0-2 文档与 shell/registry 变更提交到新分支：`d9e6f4b Add browser side panel shell`。
 - [x] 推进 Phase 1：Manifest and Side Panel Shell。
-- [x] 推进 Phase 2 最小部分：静态 feature module registry 与 `openclaw-side-panel` manifest。
+- [x] 推进 Phase 2 最小部分：静态 feature module registry 与 `bondie-side-panel` manifest。
 - [x] 完成 rose-skill 审核修复：trusted pairing、Bridge URL+token gate、Options 配置入口、popup 显式打开入口、Phase 文案同步。
 - [x] 完成 Chrome for Testing unpacked extension smoke：扩展加载、Side Panel 页面渲染、Popup 打开入口、Options Bridge 配置项。
 - [x] 推进 Phase 3：Session Bridge Adapter MVP。
@@ -105,7 +105,7 @@
 - [AIC-2911](https://linear.app/fyaic/issue/AIC-2911/feature-openclaw-browser-side-panel-可拆卸会话控制模块): Feature: OpenClaw Browser Side Panel - 可拆卸会话控制模块
 - [AIC-2912](https://linear.app/fyaic/issue/AIC-2912/docs-browser-side-panel-harness-and-legacy-migration-contract): Docs: Browser Side Panel harness and legacy migration contract
 - [AIC-2913](https://linear.app/fyaic/issue/AIC-2913/feature-side-panel-manifest-and-shell-chromeedge-entry): Feature: Side Panel manifest and shell - Chrome/Edge entry
-- [AIC-2914](https://linear.app/fyaic/issue/AIC-2914/feature-openclaw-side-panel-feature-module-registry): Feature: openclaw-side-panel feature module registry
+- [AIC-2914](https://linear.app/fyaic/issue/AIC-2914/feature-bondie-side-panel-feature-module-registry): Feature: bondie-side-panel feature module registry
 - [AIC-2915](https://linear.app/fyaic/issue/AIC-2915/feature-session-bridge-adapter-mvp-for-browser-side-panel): Feature: Session Bridge adapter MVP for Browser Side Panel
 - [AIC-2916](https://linear.app/fyaic/issue/AIC-2916/feature-conversation-newswitch-actions-with-confirmation-gates): Feature: Conversation new/switch actions with confirmation gates
 - [AIC-2917](https://linear.app/fyaic/issue/AIC-2917/feature-page-context-dock-and-deep-research-entry-in-side-panel): Feature: Page Context Dock and Deep Research entry in Side Panel
@@ -126,8 +126,8 @@
 
 ## Phase 2 最小实现草案
 
-- [x] 新增 `extension/src/modules/openclaw-side-panel/module.js` 静态 feature module。
-- [x] 新增 `extension/plugins/openclaw-side-panel/plugin.json`。
+- [x] 新增 `extension/src/modules/bondie-side-panel/module.js` 静态 feature module。
+- [x] 新增 `extension/plugins/bondie-side-panel/plugin.json`。
 - [x] background 通过本地 registry 路由 `sidePanel.*` 消息。
 - [x] disabled/missing config/paired/online 状态有明确响应。
 - [x] side panel ready gate 基于 trusted paired + online + Bridge URL/token fully configured。
@@ -137,8 +137,8 @@
 
 ## Phase 3 实现草案
 
-- [x] 新增 `extension/src/modules/openclaw-side-panel/contract.js`，隔离通用 scope 到旧 B API query 的临时映射。
-- [x] 新增 `extension/src/modules/openclaw-side-panel/session-adapter.js`，支持 `/health`、`/v1/bridge`、`/v1/sessions`。
+- [x] 新增 `extension/src/modules/bondie-side-panel/contract.js`，隔离通用 scope 到旧 B API query 的临时映射。
+- [x] 新增 `extension/src/modules/bondie-side-panel/session-adapter.js`，支持 `/health`、`/v1/bridge`、`/v1/sessions`。
 - [x] 缺 Bridge URL/token 时 fail closed，不发请求。
 - [x] 缺 host permission 时返回 `permission_required`，不发请求。
 - [x] Side Panel UI 提供用户手势触发的 Bridge host permission 授权入口。
@@ -222,7 +222,7 @@
 ## 本轮验证
 
 - [x] `python3 -m json.tool "extension/manifest.json" >/dev/null`
-- [x] `python3 -m json.tool "extension/plugins/openclaw-side-panel/plugin.json" >/dev/null`
+- [x] `python3 -m json.tool "extension/plugins/bondie-side-panel/plugin.json" >/dev/null`
 - [x] `node --check "extension/src/background.js"`
 - [x] `node --check "extension/src/background-entry.js"`
 - [x] `node --check "extension/src/content.js"`
@@ -231,13 +231,13 @@
 - [x] `node --check "extension/src/confirm.js"`
 - [x] `test ! -f "extension/src/history.js" || node --check "extension/src/history.js"`
 - [x] `test ! -f "extension/src/pattern-memory.js" || node --check "extension/src/pattern-memory.js"`
-- [x] `node --check "extension/src/modules/openclaw-side-panel/module.js"`
+- [x] `node --check "extension/src/modules/bondie-side-panel/module.js"`
 - [x] `test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/sidepanel/sidepanel.js"`
 - [x] `./scripts/package-extension.sh`
 - [x] `git diff --check`
 - [x] Chrome for Testing unpacked extension smoke：service worker 注册、Side Panel 页面渲染、Popup 打开入口、Options Bridge 配置项。
-- [x] `node --check "extension/src/modules/openclaw-side-panel/contract.js"`
-- [x] `node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"`
+- [x] `node --check "extension/src/modules/bondie-side-panel/contract.js"`
+- [x] `node --check "extension/src/modules/bondie-side-panel/session-adapter.js"`
 - [x] Chrome for Testing adapter smoke：缺 host permission 不发请求；授权后 `/health`、`/v1/bridge`、`/v1/sessions` 路径和 Bearer header 正常；公开 payload 不含 token。
 - [x] Chrome for Testing visual smoke：390px 侧栏宽度下 scoped sessions、长 route key、长 session key 不重叠。
 - [x] Chrome for Testing action adapter smoke：new payload 不含 `session_id`；switch 缺 `session_id` 拒绝；switch payload 必含目标 `session_id`；confirmed gate 正常；公开 payload 不含 token。
@@ -261,7 +261,7 @@
 - [x] 正式 B patched debug smoke：`/v1/sessions?debug=true` 200，`session_count=26`，`reason=ok`，`has_timings=true`，`short_circuited=true`。
 - [x] Chrome for Testing official Bridge UI smoke：temporary extension copy + dummy gateway online gate + official Bridge，`Ready`，26 个真实 sessions，无横向溢出。截图：`/tmp/openclaw-sidepanel-real-prod-sessions-20260618.png`。
 - [x] Phase 7A syntax：`node --check "extension/src/options.js"`。
-- [x] Phase 7A syntax：`node --check "extension/src/modules/openclaw-side-panel/module.js"`。
+- [x] Phase 7A syntax：`node --check "extension/src/modules/bondie-side-panel/module.js"`。
 - [x] Phase 7A syntax：`node --check "extension/src/sidepanel/sidepanel.js"`。
 - [x] Phase 7A diff hygiene：`git diff --check`。
 - [x] Phase 7A Chrome for Testing official Bridge regression：`Ready`，26 个真实 sessions，2 chips，1 group，稳定提示，无横向溢出。截图：`/tmp/openclaw-sidepanel-phase7-real-20260618-v3.png`。
@@ -269,11 +269,11 @@
 - [x] Phase 7B Chrome for Testing message contract smoke：legacy instance list 26 sessions；legacy unknown instance `instance_unavailable`；fixture Bondie B list 1 session；fixture Bondie B new action `fixture_read_only`。
 - [x] Phase 7B Chrome for Testing identity gate smoke：默认 `legacy-paired` 可加载 26 sessions；切换 `sidePanelIdentityMode=oauth` 后 `sidePanel.status` 为 `identity_required`，sessions/instances 均为空。
 - [x] Phase 7B Chrome for Testing provider gate smoke：默认 `legacy-session-bridge` 可加载 26 sessions；切换 `sidePanelInstanceProvider=bondie-control-plane` 后 `sidePanel.status` 为 `identity_required`，sessions/instances 均为空，new action 返回 `identity_required`。
-- [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"`。
+- [x] Phase 7C syntax：`node --check "extension/src/modules/bondie-side-panel/control-plane-contract.js"`。
 - [x] Phase 7C diff hygiene：`git diff --check`。
 - [x] Phase 7C contract smoke：normalize A/B/C instances、过滤无效权限、保留 Control Plane URL path prefix、session 补充 instance metadata、new/switch confirmation gate。
 - [x] Phase 7C repeatable smoke：`node "scripts/test-control-plane-contract.mjs"`，输出 `{"ok":true,"instances":2,"sessions":1,"adapterCalls":4,"moduleFailClosed":true}`。
-- [x] Phase 7C syntax：`node --check "extension/src/modules/openclaw-side-panel/control-plane-adapter.js"`。
+- [x] Phase 7C syntax：`node --check "extension/src/modules/bondie-side-panel/control-plane-adapter.js"`。
 - [x] Phase 7C fail-closed smoke：message layer 在已配对但 `sidePanelIdentityMode=oauth` 时返回 `identity_required`，不列 sessions/instances，new action 不确认。
 - [x] Phase 8 health projection smoke：Control Plane instance normalizer 保留 health 摘要，degraded instance 默认禁用 actions。
 - [x] Phase 8 negative readiness smoke：401、disabled action 和 stale health 均 fail closed。

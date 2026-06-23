@@ -74,7 +74,7 @@ context.getSidePanelOAuthToken = async () => ({
 
 已落地 helper：
 
-- `extension/src/modules/openclaw-side-panel/oauth-token-contract.js`
+- `extension/src/modules/bondie-side-panel/oauth-token-contract.js`
 - `normalizeOAuthTokenState(payload, { now })`
 - `publicOAuthTokenState(tokenState)`
 

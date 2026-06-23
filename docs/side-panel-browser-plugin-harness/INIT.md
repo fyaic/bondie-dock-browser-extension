@@ -21,9 +21,9 @@
 ## 当前分支
 
 ```text
-repo: /Users/fuyo-aic/Projects/openclaw-browser-host-extension
+repo: /Users/fuyo-aic/Projects/bondie-dock-browser-extension
 branch: feature/bondie-multi-instance-permissions
-github: https://github.com/fyaic/openclaw-browser-host-extension.git
+github: https://github.com/fyaic/bondie-dock-browser-extension.git
 ```
 
 ## 已读旧项目
@@ -49,7 +49,7 @@ github: https://github.com/fyaic/openclaw-browser-host-extension.git
 - OpenClaw first：第一阶段只服务 OpenClaw，不实现完整多 Agent provider。
 - Side Panel 第一阶段作为 Chrome/Edge Chromium 能力推进，复用当前 `minimum_chrome_version: "116"` 基线。
 - Safari 不阻塞 MVP，只写适配差异和后续评估。
-- UI 模块采用“插件的插件”形式：extension core 提供 transport/storage/capability host，`openclaw-side-panel` 作为内置 feature module 注册。
+- UI 模块采用“插件的插件”形式：extension core 提供 transport/storage/capability host，`bondie-side-panel` 作为内置 feature module 注册。
 - Session Bridge 先复用 HTTP contract，后续再评估是否直接走 OpenClaw Gateway 或 Native Messaging。
 - Bondie 多实例默认不让浏览器直连所有设备 bridge；优先走 OAuth control plane，再由服务端通过 Tailscale/private network 调各设备 bridge。
 - 浏览器页面、DOM、active tab payload 都不作为 session 授权源；session 授权必须来自 pairing/device identity、用户选择的 workspace/scope、bridge/OpenClaw read-back。

@@ -13,7 +13,7 @@
 | 层级 | 名称 | 说明 |
 |---|---|---|
 | 用户侧浏览器插件 | Bondie Dock | Chrome/Edge 插件、popup、side panel、安装文档使用这个名称 |
-| 浏览器侧栏模块 | Bondie Dock Side Panel | 可拆卸 extension feature module，首期仍在本仓库内实现 |
+| 浏览器侧栏模块 | Bondie Dock Side Panel / `bondie-side-panel` | 可拆卸 extension feature module，首期仍在本仓库内实现 |
 | 中央权限与实例服务 | Bondie Control Plane | 已独立为 `fyaic/bondie-control-plane`，聚合 OAuth 身份、Bondie 实例、权限关系和 bridge registry |
 | 每台 Bondie/OpenClaw 设备服务 | Bondie OpenClaw Session Bridge | 已独立在 `fyaic/bondie-openclaw-session-bridge`，负责该设备 sessions API |
 | 底层运行时/协议 | OpenClaw / browser-host / node-compatible | 保留内部能力、capability、protocol、adapter 名称，避免破坏兼容性 |
@@ -44,11 +44,11 @@
 
 ## 仓库边界
 
-- 当前仓库继续承载 Bondie Dock 浏览器插件：`fyaic/openclaw-browser-host-extension`。
+- 当前仓库继续承载 Bondie Dock 浏览器插件：`fyaic/bondie-dock-browser-extension`。
 - Session Bridge 标准分发仓库：`fyaic/bondie-openclaw-session-bridge`。
 - Control Plane 标准仓库：`fyaic/bondie-control-plane`。
 
-当前仓库暂不重命名，避免打断已有远端、Linear、安装文档和测试脚本引用。产品名先在 manifest、popup、options、side panel 和快速安装文档中落地。
+GitHub 仓库统一为 `fyaic/bondie-dock-browser-extension`。旧 `openclaw-browser-host-extension` 只作为历史迁移名出现。
 
 ## 下一步主线
 

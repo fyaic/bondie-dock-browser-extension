@@ -54,7 +54,7 @@ node --check "extension/src/sidepanel/sidepanel.js"
 
 - 新增最小 module registry。
 - 将 `sidePanel.*` message 从 background 主 switch 中隔离出来。
-- 新增 `plugins/openclaw-side-panel/plugin.json`。
+- 新增 `plugins/bondie-side-panel/plugin.json`。
 - 不重构现有 popup/page intelligence 逻辑。
 
 验证：

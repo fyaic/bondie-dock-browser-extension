@@ -5,7 +5,7 @@
 
 ## 目标
 
-验证 OpenClaw Browser Host Extension 能在 Chrome / Edge 中作为 unpacked extension 加载，完成 OpenClaw node-compatible protocol 4 连接，并覆盖当前页面智能服务、通知/历史、Pattern Memory 建议和二级开发工具的基础测试。
+验证 Bondie Dock 能在 Chrome / Edge 中作为 unpacked extension 加载，完成 OpenClaw node-compatible protocol 4 连接，并覆盖当前页面智能服务、通知/历史、Pattern Memory 建议、Side Panel 和二级开发工具的基础测试。
 
 ## 前置条件
 
@@ -13,7 +13,7 @@
 - 本地仓库已拉取：
 
 ```text
-/Users/fuyo-aic/Projects/openclaw-browser-host-extension
+/Users/fuyo-aic/Projects/bondie-dock-browser-extension
 ```
 
 ## 加载插件
@@ -47,7 +47,7 @@ Chrome:
 4. 选择：
 
 ```text
-/Users/fuyo-aic/Projects/openclaw-browser-host-extension/extension
+/Users/fuyo-aic/Projects/bondie-dock-browser-extension/extension
 ```
 
 Edge:

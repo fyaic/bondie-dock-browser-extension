@@ -1245,7 +1245,7 @@ function diagnosticsText(payload) {
   const instanceProvider = payload.instanceProvider || {};
   const lines = [
     `state: ${payload.state || 'unknown'}`,
-    `module: ${payload.module?.id || 'openclaw-side-panel'}`,
+    `module: ${payload.module?.id || 'bondie-side-panel'}`,
     `identity_mode: ${identity.mode || 'legacy-paired'}`,
     `identity_authenticated: ${Boolean(identity.authenticated)}`,
     `identity_reason: ${redactText(identity.reason || 'none')}`,

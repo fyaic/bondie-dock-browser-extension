@@ -2,7 +2,7 @@
 
 日期：2026-06-09
 
-仓库：[openclaw-browser-host-extension](https://github.com/fyaic/openclaw-browser-host-extension)
+仓库：[bondie-dock-browser-extension](https://github.com/fyaic/bondie-dock-browser-extension)
 
 ## 背景
 

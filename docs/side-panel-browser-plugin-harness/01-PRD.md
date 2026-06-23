@@ -139,7 +139,7 @@ restorable
 - 多班底实例按用户权限聚合展示，不再假设一个账号只对应一个实例。
 - Side Panel UI 默认采用“全部合集 + 按 Bondie 实例分组”的布局，并提供实例切换器。
 - 多设备场景不要求浏览器直连每台 bridge；默认通过 Bondie control plane 聚合。
-- 架构中明确哪些能力来自 extension core，哪些能力来自 `openclaw-side-panel` 模块。
+- 架构中明确哪些能力来自 extension core，哪些能力来自 `bondie-side-panel` 模块。
 - new/switch 行为保持旧 B 侧安全语义：new 不带 generation id，switch 必须校验 generation id。
 - UI 状态明确区分：offline、unpaired、bridge unavailable、scope unresolved、empty sessions、unconfirmed operation、confirmed operation。
 - 测试计划覆盖 contract、权限、service worker 生命周期、side panel 打开路径、文字溢出和关键空态。

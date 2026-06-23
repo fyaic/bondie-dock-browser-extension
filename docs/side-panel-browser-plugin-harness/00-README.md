@@ -31,7 +31,7 @@
 
 ## 一句话方案
 
-在 Bondie Dock 内新增可拆卸的 `openclaw-side-panel` feature module：它用 Chrome/Edge Side Panel 展示用户有权限访问的 Bondie/OpenClaw 实例和会话控制 UI，通过 background 的 identity、permission 和 session adapters 调本地/远程控制面，严格复用旧 B 侧的 scoped session、route-level new、generation-level switch 和 confirmation 语义，并在下一阶段扩展为 Bondie 多实例、从属/沟通关系权限模型。
+在 Bondie Dock 内新增可拆卸的 `bondie-side-panel` feature module：它用 Chrome/Edge Side Panel 展示用户有权限访问的 Bondie/OpenClaw 实例和会话控制 UI，通过 background 的 identity、permission 和 session adapters 调本地/远程控制面，严格复用旧 B 侧的 scoped session、route-level new、generation-level switch 和 confirmation 语义，并在下一阶段扩展为 Bondie 多实例、从属/沟通关系权限模型。
 
 ## 新旧链路对比
 

@@ -1,4 +1,4 @@
-# `openclaw-side-panel` 模块契约
+# `bondie-side-panel` 模块契约
 
 本文件定义“插件的插件”设计。目标是在 extension 内形成可拆模块，而不是把 Side Panel 直接写进 popup 或 background 的大 switch 里。
 
@@ -9,7 +9,7 @@
 | 类型 | 示例 | 运行位置 | 用途 |
 |---|---|---|---|
 | script plugin | `extension/plugins/media-to-notes` | 浏览器外部脚本/本地 pipeline | 处理网页、视频、笔记产物 |
-| feature module | `openclaw-side-panel` | extension UI + background API | 注册浏览器 UI、状态、命令和 adapter |
+| feature module | `bondie-side-panel` | extension UI + background API | 注册浏览器 UI、状态、命令和 adapter |
 
 Side Panel 属于 feature module。
 
@@ -19,7 +19,7 @@ Side Panel 属于 feature module。
 extension/
 ├── src/
 │   ├── modules/
-│   │   └── openclaw-side-panel/
+│   │   └── bondie-side-panel/
 │   │       ├── module.js
 │   │       ├── session-adapter.js
 │   │       ├── contract.js
@@ -30,7 +30,7 @@ extension/
 │       ├── sidepanel.js
 │       └── sidepanel.css
 └── plugins/
-    └── openclaw-side-panel/
+    └── bondie-side-panel/
         └── plugin.json
 ```
 
@@ -38,18 +38,18 @@ extension/
 
 - `src/modules` 放运行时代码，可由 background import。
 - `src/sidepanel` 放浏览器 UI。
-- `plugins/openclaw-side-panel/plugin.json` 放模块元数据，便于后续 settings/registry 展示。
+- `plugins/bondie-side-panel/plugin.json` 放模块元数据，便于后续 settings/registry 展示。
 
 ## 模块 manifest 草案
 
 ```json
 {
-  "id": "openclaw-side-panel",
+  "id": "bondie-side-panel",
   "name": "OpenClaw Side Panel",
   "version": "0.1.0",
   "type": "extension-feature-module",
   "description": "OpenClaw conversation control and page-context side panel for Browser Host.",
-  "entry": "src/modules/openclaw-side-panel/module.js",
+  "entry": "src/modules/bondie-side-panel/module.js",
   "ui": {
     "sidePanel": "src/sidepanel/sidepanel.html"
   },
@@ -63,7 +63,7 @@ extension/
     "sidePanel",
     "storage"
   ],
-  "ownedBy": "openclaw-browser-host-extension"
+  "ownedBy": "bondie-dock-browser-extension"
 }
 ```
 
@@ -113,8 +113,8 @@ chrome.runtime.sendMessage({
 - fixture instance action 返回 `fixture_read_only`，不调用真实 Bridge。
 
 Phase 7C 起，生产 Bondie Control Plane contract 固化在
-`extension/src/modules/openclaw-side-panel/control-plane-contract.js`。Control Plane fetch 边界固化在
-`extension/src/modules/openclaw-side-panel/control-plane-adapter.js`。当前 adapter skeleton 可用 fake fetch 验证 readiness、identity、instances、sessions、new/switch action，但还没有接入 `module.js` runtime。
+`extension/src/modules/bondie-side-panel/control-plane-contract.js`。Control Plane fetch 边界固化在
+`extension/src/modules/bondie-side-panel/control-plane-adapter.js`。当前 adapter skeleton 可用 fake fetch 验证 readiness、identity、instances、sessions、new/switch action，但还没有接入 `module.js` runtime。
 
 Control Plane endpoint 草案：
 
@@ -198,15 +198,15 @@ background 需要从硬编码 switch 逐步走向模块注册，但第一阶段�
 
 ```js
 const FEATURE_MODULES = [
-  openClawSidePanelModule
+  bondieSidePanelModule
 ];
 ```
 
 模块可以声明：
 
 ```js
-export const openClawSidePanelModule = {
-  id: 'openclaw-side-panel',
+export const bondieSidePanelModule = {
+  id: 'bondie-side-panel',
   messages: {
     'sidePanel.status': handleStatus,
     'sidePanel.sessions.list': handleListSessions

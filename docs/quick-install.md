@@ -9,7 +9,7 @@
 内测分发使用 zip 包：
 
 ```text
-openclaw-browser-host-extension-0.1.0-alpha.12.zip
+bondie-dock-browser-extension-0.1.0-alpha.12.zip
 ```
 
 用户拿到 zip 后先解压到一个固定目录，例如：

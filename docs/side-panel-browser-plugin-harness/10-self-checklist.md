@@ -17,7 +17,7 @@
 
 - [x] Side Panel UI 只通过 background message API 通信。
 - [x] background 仍是唯一 transport/pairing/storage owner。
-- [x] `openclaw-side-panel` 能作为 feature module 启用/禁用。
+- [x] `bondie-side-panel` 能作为 feature module 启用/禁用。
 - [x] session adapter 隔离了旧 B API 的 WeCom 命名。
 - [x] Side Panel 页面任务复用既有 `pageMeta` / `pageService` / `handoffs` message contract，没有复制 media-to-notes pipeline。
 - [x] popup、options、history、confirm 的既有路径没有被破坏。
@@ -98,12 +98,12 @@ node --check "extension/src/popup.js"
 node --check "extension/src/confirm.js"
 test ! -f "extension/src/history.js" || node --check "extension/src/history.js"
 test ! -f "extension/src/pattern-memory.js" || node --check "extension/src/pattern-memory.js"
-test ! -f "extension/src/modules/openclaw-side-panel/contract.js" || node --check "extension/src/modules/openclaw-side-panel/contract.js"
-test ! -f "extension/src/modules/openclaw-side-panel/control-plane-adapter.js" || node --check "extension/src/modules/openclaw-side-panel/control-plane-adapter.js"
-test ! -f "extension/src/modules/openclaw-side-panel/control-plane-contract.js" || node --check "extension/src/modules/openclaw-side-panel/control-plane-contract.js"
-test ! -f "extension/src/modules/openclaw-side-panel/oauth-token-contract.js" || node --check "extension/src/modules/openclaw-side-panel/oauth-token-contract.js"
-test ! -f "extension/src/modules/openclaw-side-panel/session-adapter.js" || node --check "extension/src/modules/openclaw-side-panel/session-adapter.js"
-test ! -f "extension/src/modules/openclaw-side-panel/module.js" || node --check "extension/src/modules/openclaw-side-panel/module.js"
+test ! -f "extension/src/modules/bondie-side-panel/contract.js" || node --check "extension/src/modules/bondie-side-panel/contract.js"
+test ! -f "extension/src/modules/bondie-side-panel/control-plane-adapter.js" || node --check "extension/src/modules/bondie-side-panel/control-plane-adapter.js"
+test ! -f "extension/src/modules/bondie-side-panel/control-plane-contract.js" || node --check "extension/src/modules/bondie-side-panel/control-plane-contract.js"
+test ! -f "extension/src/modules/bondie-side-panel/oauth-token-contract.js" || node --check "extension/src/modules/bondie-side-panel/oauth-token-contract.js"
+test ! -f "extension/src/modules/bondie-side-panel/session-adapter.js" || node --check "extension/src/modules/bondie-side-panel/session-adapter.js"
+test ! -f "extension/src/modules/bondie-side-panel/module.js" || node --check "extension/src/modules/bondie-side-panel/module.js"
 test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/sidepanel/sidepanel.js"
 test ! -f "scripts/test-control-plane-contract.mjs" || node "scripts/test-control-plane-contract.mjs"
 ./scripts/package-extension.sh

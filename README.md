@@ -6,14 +6,14 @@ Bondie Dock（原 OpenClaw Browser Host Extension）是 Bondie / OpenClaw 的浏
 
 2026-05-15 产品会议后，浏览器插件路线升级为“浏览器智能工作流 Agent 门户”。后续主线不再只是远程宿主，而是围绕 Pattern Memory、Context Capture 和 OpenClaw Recap 主动建议构建产品体验。会议需求整理见 [浏览器智能工作流 Agent 产品化需求整理](docs/product-requirements-2026-05-15.md)。
 
-2026-06-23 起，面向用户的浏览器插件产品名定为 Bondie Dock；工程和协议层仍保留 OpenClaw、browser-host、Session Bridge 等实现语义。命名与仓库边界见 [Bondie Dock 产品命名与系统边界](docs/side-panel-browser-plugin-harness/19-product-naming-and-system-map.md)。
+2026-06-23 起，面向用户的浏览器插件产品名定为 Bondie Dock；工程和协议层仍保留 OpenClaw、browser-host、Session Bridge 等实现语义。三仓系统边界见 [Bondie System Architecture](docs/bondie-system-architecture.md)，命名与仓库边界见 [Bondie Dock 产品命名与系统边界](docs/side-panel-browser-plugin-harness/19-product-naming-and-system-map.md)。
 
 当前版本：`0.1.0-alpha.12`。
 
 最新主仓库：
 
 ```text
-https://github.com/fyaic/openclaw-browser-host-extension.git
+https://github.com/fyaic/bondie-dock-browser-extension.git
 ```
 
 当前主线分支：
@@ -55,7 +55,12 @@ main
 ├── extension
 │   ├── icons
 │   ├── manifest.json
+│   ├── plugins
+│   │   ├── bondie-side-panel
+│   │   └── media-to-notes
 │   └── src
+│       ├── modules
+│       │   └── bondie-side-panel
 │       ├── background.js
 │       ├── confirm.html
 │       ├── confirm.js
@@ -124,6 +129,7 @@ Edge:
 - stale deviceToken 自动恢复：旧 deviceToken scope 不匹配时清理并回退到 gateway token。
 - 页面智能服务主入口：把当前网页交给 OpenClaw / Media to Notes 能力生成本地知识笔记。
 - 插件内置能力模块目录：`extension/plugins/media-to-notes`。
+- 插件内 Side Panel 模块：`extension/plugins/bondie-side-panel` 和 `extension/src/modules/bondie-side-panel`，作为 Bondie Dock 的可拆卸 feature module。
 - 历史页和通知卡片：用于展示处理中的任务、完成结果、TLDR 和文件路径。
 - Pattern Memory 初版：已有本地快照/建议/恢复的工程底座，但产品上仍应视为“待打磨的智能感知能力”。
 - Popup / Options / History / Confirm 前端重设计：popup 改为软圆角壳层、页面/工作流/记录三段式导航，设置和开发工具降级为二级入口，Options 设置页改为分组面板，历史页状态边界和视觉层级已统一。

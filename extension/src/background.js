@@ -5,11 +5,11 @@ import {
 } from './pattern-memory.js';
 import {
   SIDE_PANEL_DEFAULT_CONFIG,
-  openClawSidePanelModule
-} from './modules/openclaw-side-panel/module.js';
+  bondieSidePanelModule
+} from './modules/bondie-side-panel/module.js';
 import {
   normalizeOAuthTokenState
-} from './modules/openclaw-side-panel/oauth-token-contract.js';
+} from './modules/bondie-side-panel/oauth-token-contract.js';
 
 const DEFAULT_CONFIG = {
   gatewayUrl: '',
@@ -59,7 +59,7 @@ const CAPABILITIES = [
   'user.confirm'
 ];
 const FEATURE_MODULES = [
-  openClawSidePanelModule
+  bondieSidePanelModule
 ];
 const FEATURE_MESSAGE_HANDLERS = buildFeatureMessageHandlers(FEATURE_MODULES);
 const SUGGESTIONS_STORAGE_KEY = 'browserSuggestions';

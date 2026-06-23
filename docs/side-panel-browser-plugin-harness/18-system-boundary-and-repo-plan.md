@@ -94,7 +94,7 @@ Browser Side Panel
 当前仓库：
 
 ```text
-https://github.com/fyaic/openclaw-browser-host-extension.git
+https://github.com/fyaic/bondie-dock-browser-extension.git
 ```
 
 职责：

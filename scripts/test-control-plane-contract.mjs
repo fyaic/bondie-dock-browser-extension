@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 
-import { BondieControlPlaneAdapter } from '../extension/src/modules/openclaw-side-panel/control-plane-adapter.js';
-import { openClawSidePanelModule } from '../extension/src/modules/openclaw-side-panel/module.js';
+import { BondieControlPlaneAdapter } from '../extension/src/modules/bondie-side-panel/control-plane-adapter.js';
+import { bondieSidePanelModule } from '../extension/src/modules/bondie-side-panel/module.js';
 import {
   buildSessionBridgeActionPayload,
   buildSessionBridgeQuery
-} from '../extension/src/modules/openclaw-side-panel/contract.js';
+} from '../extension/src/modules/bondie-side-panel/contract.js';
 import {
   normalizeOAuthTokenState,
   publicOAuthTokenState
-} from '../extension/src/modules/openclaw-side-panel/oauth-token-contract.js';
+} from '../extension/src/modules/bondie-side-panel/oauth-token-contract.js';
 import {
   CONTROL_PLANE_ENDPOINTS,
   buildControlPlaneHeaders,
@@ -19,7 +19,7 @@ import {
   normalizeControlPlaneIdentity,
   normalizeControlPlaneInstancesPayload,
   normalizeControlPlaneSessionsPayload
-} from '../extension/src/modules/openclaw-side-panel/control-plane-contract.js';
+} from '../extension/src/modules/bondie-side-panel/control-plane-contract.js';
 
 const identity = normalizeControlPlaneIdentity({
   authenticated: true,
@@ -355,7 +355,7 @@ const pairedButNoOAuthContext = createModuleContext({
   sidePanelInstanceProvider: 'bondie-control-plane',
   sidePanelControlPlaneBaseUrl: 'https://bondie.example.com/api'
 });
-const moduleListResult = await openClawSidePanelModule.messages['sidePanel.sessions.list']({
+const moduleListResult = await bondieSidePanelModule.messages['sidePanel.sessions.list']({
   message: {},
   context: pairedButNoOAuthContext
 });
@@ -366,7 +366,7 @@ assert.equal(moduleListResult.payload.instances.length, 0);
 assert.equal(moduleListResult.payload.identity.authenticated, false);
 assert.equal(moduleListResult.payload.instanceProvider.provider, 'bondie-control-plane');
 
-const moduleNewResult = await openClawSidePanelModule.messages['sidePanel.sessions.new']({
+const moduleNewResult = await bondieSidePanelModule.messages['sidePanel.sessions.new']({
   message: {
     instanceId: 'bondie-a'
   },
@@ -380,7 +380,7 @@ assert.equal(moduleNewResult.payload.instanceId, 'bondie-a');
 const subordinateLocalContext = createModuleContext({
   sidePanelLocalRelationshipType: 'subordinate'
 });
-const subordinateLocalList = await openClawSidePanelModule.messages['sidePanel.sessions.list']({
+const subordinateLocalList = await bondieSidePanelModule.messages['sidePanel.sessions.list']({
   message: {},
   context: subordinateLocalContext
 });

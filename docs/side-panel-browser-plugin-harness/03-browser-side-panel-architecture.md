@@ -26,7 +26,7 @@ Browser Extension
 │   ├── page intelligence
 │   ├── pattern memory
 │   ├── media-to-notes script plugin
-│   └── openclaw-side-panel UI module
+│   └── bondie-side-panel UI module
 └── adapters
     ├── identity / permission adapter
     ├── session bridge HTTP adapter

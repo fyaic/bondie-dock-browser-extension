@@ -243,8 +243,8 @@ Phase 7B 已完成扩展消息层的最小 contract：
 
 已落地文件：
 
-- `extension/src/modules/openclaw-side-panel/control-plane-contract.js`
-- `extension/src/modules/openclaw-side-panel/control-plane-adapter.js`
+- `extension/src/modules/bondie-side-panel/control-plane-contract.js`
+- `extension/src/modules/bondie-side-panel/control-plane-adapter.js`
 - `docs/side-panel-browser-plugin-harness/12-control-plane-contract.md`
 
 ### Phase 8: Device Bridge Distribution

@@ -14,7 +14,7 @@ with open(sys.argv[1], "r", encoding="utf-8") as f:
 print(manifest.get("version_name") or manifest["version"])
 PY
 )"
-PACKAGE_NAME="openclaw-browser-host-extension-$VERSION_NAME.zip"
+PACKAGE_NAME="bondie-dock-browser-extension-$VERSION_NAME.zip"
 
 mkdir -p "$DIST_DIR"
 rm -f "$DIST_DIR/$PACKAGE_NAME"
@@ -25,4 +25,3 @@ rm -f "$DIST_DIR/$PACKAGE_NAME"
 )
 
 echo "$DIST_DIR/$PACKAGE_NAME"
-
