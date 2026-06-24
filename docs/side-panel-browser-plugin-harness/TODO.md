@@ -2,7 +2,7 @@
 
 ## 状态
 
-当前阶段：Phase 10 - Bondie Dock 产品化与 Control Plane runtime 接线。Phase 9 local Bondie visibility functional wiring 已完成；已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染 26 个真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 已补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`，只显示 Veil/周威 route 相关 sessions。2026-06-23 已将浏览器插件用户可见产品名定为 Bondie Dock，并新增命名/系统边界文档。`fyaic/bondie-control-plane` private 仓库已创建并推送初始服务骨架，且已补 bridge health readiness、GitHub Actions CI smoke、legacy Session Bridge 字段映射和真实 sessions proxy smoke。当前 Bondie Dock 已在 `sidePanelIdentityMode=oauth` + `sidePanelInstanceProvider=bondie-control-plane` + Control Plane dev token 下接入 runtime，模块级只读 smoke 可通过 Control Plane 拉取 Bondie A 全量 27 条 sessions、Bondie B 服务关系 0 条 sessions；生产 OAuth token provider 仍等待登录授权系统文档。
+当前阶段：Phase 11 - Control Plane Chrome 手测 gate 与生产 OAuth 前置。Phase 9 local Bondie visibility functional wiring 已完成；已从 `feature/openclaw-browser-side-panel-plugin` 切出新分支 `feature/bondie-multi-instance-permissions`，用于承接 Bondie 多实例权限主线，不影响 main。B 侧 `/v1/sessions` 504 已在 `openclaw-session-bridge` 源码中完成最小修复；正式 `100.79.143.105:8766` 已重启加载补丁，`debug.timings` 和 exact-route short-circuit 已验证。Chrome Side Panel 指向正式 Bridge 可稳定渲染真实 sessions。Phase 7A/7B 已完成多实例 fixture UI、message-level `instanceId` contract、identity gate 和 provider gate。Phase 7C 已完成 Control Plane contract helper、adapter、repeatable smoke、OAuth fail-closed message-layer smoke 和 readiness negative tests。Phase 8/8.5 已完成 bridge registry、device onboarding、multi-bridge readiness、系统边界、独立 Session Bridge private repo 和 bridge secret store 语义。Phase 9 已补本地 Bondie 权限功能：本地关系为 `subordinate` 时通过 `visibility_policy=all_sessions` 查看本 bridge 全量 sessions；本地关系为 `communication` 服务关系时保持 scoped `participant_sessions`。2026-06-23 已将浏览器插件用户可见产品名定为 Bondie Dock，并新增命名/系统边界文档。`fyaic/bondie-control-plane` private 仓库已创建并推送初始服务骨架，且已补 bridge health readiness、GitHub Actions CI smoke、legacy Session Bridge 字段映射和真实 sessions proxy smoke。当前 Bondie Dock 已在 `sidePanelIdentityMode=oauth` + `sidePanelInstanceProvider=bondie-control-plane` + Control Plane dev token 下接入 runtime；2026-06-24 已新增可复跑 `scripts/smoke-control-plane-runtime.mjs` 和 Chrome manual gate runbook。生产 OAuth token provider 仍等待登录授权系统文档。
 
 ## 已完成
 
@@ -88,6 +88,8 @@
 - [x] Phase 10 Control Plane Bridge proxy：修复 relationship scope 到旧 Session Bridge `wecom_user_id` 等字段的映射；带本机 `SESSION_BRIDGE_TOKEN` smoke 下，`bondie-a/all_sessions` 可返回 25 条真实 sessions，`bondie-b/participant_sessions` 按示例 scope 返回 0 条且无错误。
 - [x] Phase 10 Bondie Dock runtime adapter：`bondie-control-plane` provider 已接入 module runtime，status/list/new/switch 通过 Control Plane adapter 路由；缺 URL/token/OAuth/host permission 时仍 fail closed，不回退 legacy Bridge。
 - [x] Phase 10 Dock -> Control Plane 只读 smoke：临时本地 Control Plane `127.0.0.1:8790` + dev token 下，`sidePanel.status` 返回 `ready`，合集返回 2 个实例、27 条 sessions；Bondie A `all_sessions` 返回 27 条，Bondie B `participant_sessions` 返回 0 条。
+- [x] Phase 11 可复跑 runtime smoke：新增 `scripts/smoke-control-plane-runtime.mjs`，用环境变量读取 Control Plane URL/token，不打印 token，验证 module message handler 真实走 Control Plane。
+- [x] Phase 11 Chrome 手测 gate 文档：新增 `20-control-plane-chrome-manual-gate.md`，覆盖本地 Control Plane 启动、模块 smoke、Chrome Options 配置、host permission、通过标准和失败排查。
 
 ## Phase 10 Control Plane 实现草案
 
@@ -101,8 +103,10 @@
 - [x] 增加 GitHub Actions CI smoke。
 - [x] 对齐旧 Session Bridge WeCom-shaped binding 字段，验证真实 sessions proxy。
 - [x] Bondie Dock provider 切到 `bondie-control-plane` 后，验证多实例合集和权限过滤的本机只读路径。
+- [x] 将 Control Plane runtime smoke 固化为仓库脚本，避免后续 inline 命令漂移。
 - [ ] 等待登录授权系统文档后，把 dev token provider 替换为生产 OAuth token provider。
-- [ ] 增加真实 Chrome side panel 手动 gate：加载最新 unpacked extension，配置 Control Plane URL/dev token，授权 host permission 后确认 UI 文案、实例切换和会话列表。
+- [x] 增加真实 Chrome side panel 手动 gate 文档：加载最新 unpacked extension，配置 Control Plane URL/dev token，授权 host permission 后确认 UI 文案、实例切换和会话列表。
+- [ ] 执行真实 Chrome side panel 手动 gate，并记录截图/结果。
 
 ## Linear 树
 
@@ -197,7 +201,7 @@
 - [x] 增加 fixtures：个人私助 A、团队共享 B、他人分享 C。
 - [x] 增加 fixture action fail-closed：fixture 模式下 UI 禁用 new/switch，background message 也返回 `fixture_read_only`。
 - [ ] 设计 OAuth identity adapter：生产 `sidePanel.identity.status`。
-- [ ] 设计 permitted instances adapter：生产 `sidePanel.instances.list`。
+- [x] 设计并实现 permitted instances adapter：dev-token Control Plane runtime 下的生产形态 `sidePanel.instances.list`。
 - [ ] 等待登录授权系统接入文档后，对齐 OAuth token provider 与 Control Plane `/v1/me`。
 - [x] 创建 private Session Bridge 远程仓库 `https://github.com/fyaic/bondie-openclaw-session-bridge.git`，本地 remote 已收口为 `origin`。
 - [x] 旧仓库 `https://github.com/veil-chow-fyaic/openclaw-session-bridge.git` 已改为 `legacy-origin`，只作历史参考。
@@ -237,6 +241,7 @@
 - [x] `test ! -f "extension/src/pattern-memory.js" || node --check "extension/src/pattern-memory.js"`
 - [x] `node --check "extension/src/modules/bondie-side-panel/module.js"`
 - [x] `test ! -f "extension/src/sidepanel/sidepanel.js" || node --check "extension/src/sidepanel/sidepanel.js"`
+- [x] `node --check "scripts/smoke-control-plane-runtime.mjs"`
 - [x] `./scripts/package-extension.sh`
 - [x] `git diff --check`
 - [x] Chrome for Testing unpacked extension smoke：service worker 注册、Side Panel 页面渲染、Popup 打开入口、Options Bridge 配置项。
@@ -256,6 +261,7 @@
 - [x] Chrome for Testing session-first layout smoke：`OpenClaw 会话` 位于 `当前路由` 和 `页面上下文` 之前。
 - [x] Chrome for Testing real paired/online smoke：手工 profile `9340` 已 connected/registered/online/paired。
 - [x] Chrome for Testing real host permission smoke：手工 profile `9342` 已授权 `http://100.79.143.105:8766/*`。
+- [x] Phase 11 Control Plane runtime smoke script：`BONDIE_CONTROL_PLANE_URL=http://127.0.0.1:8790 BONDIE_CONTROL_PLANE_TOKEN=<dev-token> node scripts/smoke-control-plane-runtime.mjs --expect-instance bondie-a --expect-min-sessions 1` 返回 `ready`、2 个 instances、27 条 sessions；输出不含 token。
 - [x] B 侧源码验证：`tests.test_gateway_adapter` 26 tests OK；`tests.test_api_contract` 6 tests OK；`compileall app tests` OK；`git diff --check` OK。
 - [x] B 侧真实 Gateway 只读 adapter smoke：`session_count=26`、`reason=ok`、raw route key `4115ms` 命中并 `short_circuited=true`、`total_ms=5904`。
 - [x] B 侧临时 patched HTTP smoke：`/health` 200、`/v1/bridge` 200、`/v1/sessions?debug=true` 200，`session_count=26`、`reason=ok`、raw route key `4998ms`、`short_circuited=true`、`total_ms=7020`。

@@ -247,22 +247,23 @@ export const bondieSidePanelModule = {
 | 值 | 用途 | 权限语义 |
 |---|---|---|
 | `legacy-paired` | 当前 direct Session Bridge 兼容路径 | 设备配对作为临时 viewer，只用于 legacy/dev mode |
-| `oauth` | 生产用户身份路径 | 未接入 OAuth adapter 前必须返回 `identity_required`，不列 sessions |
+| `oauth` | 生产用户身份路径 | 当前支持 dev-token provider；生产 OAuth provider 到位前只能用于本地 smoke/手测 |
 
-Phase 7B 当前实现：
+当前实现：
 
 - 默认 `legacy-paired` 不破坏现有真实 Bridge smoke。
-- 切换到 `oauth` 后，`sidePanel.status`、`sidePanel.identity.status`、`sidePanel.sessions.list` 均 fail closed。
-- OAuth mode 不请求 Session Bridge，不把 device pairing 伪装成用户身份。
+- 切换到 `oauth` 后，必须通过 background token provider 返回 authenticated token。
+- 没有 token 时返回 `identity_required`；有 dev token 时可进入 Control Plane runtime。
+- OAuth mode 不请求 legacy Session Bridge，不把 device pairing 伪装成用户身份。
 
 `sidePanelInstanceProvider`：
 
 | 值 | 用途 | 当前行为 |
 |---|---|---|
 | `legacy-session-bridge` | 当前 Mac mini / direct Bridge 兼容路径 | 可读取 legacy scoped sessions |
-| `bondie-control-plane` | 生产多 Bondie 权限控制面 | 未接入 OAuth/control-plane adapter 前 fail closed |
+| `bondie-control-plane` | 生产多 Bondie 权限控制面 | 已接入 Control Plane runtime adapter；缺 URL/token/permission 时 fail closed |
 
-Phase 7B 当前实现：
+当前实现：
 
 - 默认 `legacy-session-bridge` 不破坏真实 Bridge 26 sessions 路径。
 - 切到 `bondie-control-plane` 时要求 OAuth identity；否则返回 `identity_required`。

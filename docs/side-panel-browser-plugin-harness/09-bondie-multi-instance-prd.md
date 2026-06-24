@@ -269,9 +269,9 @@ Phase 7B 已完成扩展消息层的最小 contract：
 ## 风险
 
 - OAuth provider 尚未定。
-- Bondie control plane 尚未存在。
-- 多设备 bridge registry 需要服务端 secret 管理。
-- 当前 Session Bridge `/v1/sessions` 存在 Gateway timeout 阻断。
+- Bondie Control Plane 已创建 private 仓库 `fyaic/bondie-control-plane`，并完成 dev-token MVP、relationship resolver、bridge registry fixtures、health projection 和 sessions proxy；生产部署位置仍待后续确定。
+- 多设备 bridge registry 需要继续从 file registry 演进到生产服务端存储和 secret reference。
+- 当前 Session Bridge `/v1/sessions` Gateway timeout 已完成 exact-route short-circuit 和全量列表 fast path；仍需在多设备部署后继续做跨 bridge smoke。
 - UI 如果过早接真实接口，容易把产品验证和基础设施问题混在一起。
 
 ## 决策
@@ -280,5 +280,5 @@ Phase 7B 已完成扩展消息层的最小 contract：
 - 已决定：浏览器默认不直连所有 bridge。
 - 已决定：Session Bridge 修复先做最小性能/可观测性修复，不改授权模型。
 - 待定：OAuth provider。
-- 待定：Bondie Control Plane 所属仓库和部署位置。
-- 待定：Instance registry 是否先做 mock/local config，还是直接服务端实现。
+- 已决定：Bondie Control Plane 所属仓库为 `fyaic/bondie-control-plane`。
+- 已决定：Instance registry 先使用 Control Plane file registry MVP，生产再替换为服务端存储。

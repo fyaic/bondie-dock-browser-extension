@@ -26,6 +26,7 @@
 | `17-oauth-token-interface.md` | OAuth token provider-neutral 接口、状态机和 fail-closed 规则 |
 | `18-system-boundary-and-repo-plan.md` | Side Panel / Control Plane / Session Bridge 边界、独立仓库拆分和 bridge secret store 解释 |
 | `19-product-naming-and-system-map.md` | Bondie Dock 产品命名、对外叙事、仓库/服务边界和下一步推进顺序 |
+| `20-control-plane-chrome-manual-gate.md` | Control Plane runtime 的本地启动、模块 smoke 和真实 Chrome 手动验收 gate |
 | `TODO.md` | 动态任务状态 |
 | `99-deviation-log.md` | 偏差、阻塞和已跳过事项 |
 

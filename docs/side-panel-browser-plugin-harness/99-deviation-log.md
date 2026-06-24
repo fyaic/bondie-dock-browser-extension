@@ -149,3 +149,6 @@
 
 - 偏差：Phase 10 Control Plane runtime 接线已通过模块级只读 smoke，但本轮未把最新 unpacked extension 再装入真实 Chrome 做 UI 手测。
   - 处理：已用 `sidePanel.status` / `sidePanel.sessions.list` message handler 直接走本地 Control Plane 验证真实 runtime 路径，返回 `ready`、2 个实例、27 条 sessions；同时保留真实 Chrome 手动 gate，下一轮由用户加载最新扩展后验证 Options 配置、host permission 授权、实例切换和 UI 文案。
+
+- 偏差：Control Plane runtime smoke 之前依赖 inline Node 命令，容易在后续恢复时丢失参数、误打印 token 或跳过 module message handler。
+  - 处理：新增 `scripts/smoke-control-plane-runtime.mjs`，只从参数/环境变量读取 Control Plane URL 和 token，输出脱敏汇总，并强制验证 `sidePanel.status`、`sidePanel.instances.list`、`sidePanel.sessions.list` 真实走 `bondie-control-plane` provider。新增 `20-control-plane-chrome-manual-gate.md`，把 Chrome 手动 gate 留给用户实际体验，不用不稳定的系统 Chrome 自动化替代。

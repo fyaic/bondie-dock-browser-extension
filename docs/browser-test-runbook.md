@@ -102,6 +102,29 @@ Edge:
 - service worker 日志不应再出现旧版 `protocol mismatch`。
 - 断开按钮会关闭连接。
 
+## Control Plane Side Panel 测试
+
+多 Bondie / 权限模型手测使用独立 gate：
+
+```text
+docs/side-panel-browser-plugin-harness/20-control-plane-chrome-manual-gate.md
+```
+
+该 gate 会先启动本地 Bondie Control Plane，再运行：
+
+```bash
+node "scripts/smoke-control-plane-runtime.mjs"
+```
+
+然后在 Chrome Options 中切到：
+
+- Identity mode: OAuth / Control Plane
+- Instance provider: Bondie Control Plane
+- Control Plane URL: `http://127.0.0.1:8790`
+- Control Plane dev token: 与本地 `BONDIE_DEV_TOKEN` 一致
+
+通过标准：Side Panel 状态为 `Ready`，诊断中 `instance_provider=bondie-control-plane`，实例切换器显示有权限的 Bondie instances，从属关系显示“查看全部”，沟通关系显示“仅相关”。
+
 ## 预期限制
 
 - 页面摘要仅在用户点击 popup 后触发。

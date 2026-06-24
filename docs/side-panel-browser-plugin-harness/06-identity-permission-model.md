@@ -165,8 +165,9 @@ POST /v1/agent-instances/{instance_id}/switch-session
 
 - 新增 `sidePanelIdentityMode`。
 - 默认 `legacy-paired` 保留 direct Session Bridge 兼容路径，只用于开发/过渡场景。
-- `oauth` 模式在 OAuth adapter 未接入前返回 `identity_required`。
-- OAuth 模式下不列 sessions、不返回 instances、不请求 Session Bridge。
+- 2026-06-18 当时 `oauth` 模式在 adapter 未接入前返回 `identity_required`。
+- 2026-06-24 当前 `oauth` 模式已支持 dev-token provider 进入 Control Plane runtime；缺 token 时仍返回 `identity_required`。
+- OAuth 模式下不请求 legacy Session Bridge，不把 device pairing 伪装成用户身份。
 - Side Panel diagnostics 只展示 `identity_mode`、`identity_authenticated`、`identity_reason`，不展示 token。
 
 该实现不是生产 OAuth；它的作用是防止把 device pairing 误当作用户身份，并为后续 OAuth/control plane adapter 留出明确边界。

@@ -78,8 +78,8 @@ async function handleStatus({ context }) {
     scope,
     instances: buildInstanceSummaries({ config, bridge, scope, identityState, instanceProvider }),
     phase: {
-      current: 'Phase 7: Bondie multi-instance permission UI',
-      next: 'Phase 7B: Identity adapter and instance-level session contract'
+      current: 'Phase 11: Control Plane Chrome manual gate',
+      next: 'Production OAuth token provider and multi-device bridge smoke'
     },
     updatedAt: new Date().toISOString()
   });

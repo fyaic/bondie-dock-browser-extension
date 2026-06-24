@@ -195,12 +195,12 @@ Control Plane 仓库应新增：
 
 ## 最小落地顺序
 
-1. 浏览器插件继续保持 `bondie-control-plane` provider fail closed，等待 OAuth token provider 文档。
-2. Session Bridge 仓库先标准化现有代码、补发布文档和 smoke，确认能部署到多台 Bondie 设备。
-3. Control Plane 仓库建最小 API：dev token identity stub、relationship fixtures、bridge registry fixtures、sessions proxy。（已完成初始骨架）
-4. 浏览器插件接入 Control Plane runtime adapter，但默认只在 OAuth ready 和 Control Plane URL 配好时启用。
-5. 用 A/B/C 三个 fixture + 至少一台真实 bridge 做端到端 smoke。
-6. 将 Session Bridge 本地文档和标准分发更新提交，并按发布节奏 push 到 `fyaic/bondie-openclaw-session-bridge`。
+1. 保持浏览器插件 legacy direct Session Bridge 路径稳定，作为单设备回归基线。
+2. 保持 `bondie-control-plane` provider 只在 OAuth/dev-token ready 且 Control Plane URL 配好时启用；失败时不回退 legacy sessions。
+3. Control Plane 仓库继续推进生产 OAuth token provider；当前 dev token identity、relationship fixtures、bridge registry fixtures、sessions proxy 已完成。
+4. 执行真实 Chrome manual gate：配置 Control Plane URL/dev token、授权 host permission、确认多实例合集和权限过滤。
+5. Session Bridge 仓库继续标准化多设备部署、smoke、回滚和 control-plane registration 文档。
+6. 后续用至少两台真实 Bondie/OpenClaw 设备做跨 bridge smoke，再考虑 merge 到主干。
 
 ## 禁止混淆
 

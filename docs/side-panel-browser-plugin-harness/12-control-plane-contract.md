@@ -19,7 +19,7 @@
 - 不让浏览器直连所有 Bondie 设备 bridge。
 - 不把每台 bridge token 下发到 extension。
 - 不用 device pairing 代替 user identity。
-- 不在 Control Plane adapter 缺失时 fallback 到 legacy Session Bridge。
+- 不在 Control Plane adapter 失败、缺配置或缺权限时 fallback 到 legacy Session Bridge。
 - 不用 `ok=true` 作为 new/switch 业务完成标准。
 
 ## Endpoint
@@ -202,8 +202,7 @@ adapter readiness 规则：
 
 ## 下一步
 
-1. 设计 OAuth token 获取与刷新 adapter。
 1. 接入生产 OAuth token 获取与刷新 adapter，替换当前 dev token provider。
-2. 增加浏览器人工 gate：Control Plane URL/dev token/host permission 配置后，Side Panel UI 能展示多实例合集并按实例过滤。
+2. 执行浏览器人工 gate：Control Plane URL/dev token/host permission 配置后，Side Panel UI 能展示多实例合集并按实例过滤。
 3. 增加越权测试：无 OAuth、仅 pairing、无 relationship、沟通关系枚举他人 session。
 4. 与服务端仓库持续对齐 endpoint 和 response schema。
