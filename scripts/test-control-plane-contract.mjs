@@ -4,7 +4,8 @@ import { BondieControlPlaneAdapter } from '../extension/src/modules/bondie-side-
 import { bondieSidePanelModule } from '../extension/src/modules/bondie-side-panel/module.js';
 import {
   buildSessionBridgeActionPayload,
-  buildSessionBridgeQuery
+  buildSessionBridgeQuery,
+  normalizeSessionsPayload
 } from '../extension/src/modules/bondie-side-panel/contract.js';
 import {
   normalizeOAuthTokenState,
@@ -167,13 +168,20 @@ const subordinateScope = {
   organization: '弗忧联盟',
   route_type: 'direct',
   route_key: 'wo_test',
-  route_label: '周威',
+  route_label: 'Veil（周威）',
   device_id: 'host-1',
-  operator_id: 'Veil',
+  operator_id: 'ZhouWei',
   visibility_policy: 'all_sessions'
 };
 const subordinateBridgeQuery = buildSessionBridgeQuery(subordinateScope);
 assert.equal(subordinateBridgeQuery.visibility_policy, 'all_sessions');
+assert.equal(subordinateBridgeQuery.chat_label, 'Veil（周威）');
+assert.equal('operator_name' in subordinateBridgeQuery, false);
+assert.equal('operator_alias' in subordinateBridgeQuery, false);
+assert.equal(normalizeSessionsPayload({
+  visibility_policy: 'all_sessions',
+  sessions: [{ session_id: 'route-1', title: 'Veil（周威）' }]
+}).collectionKind, 'route_index');
 
 const communicationBridgeQuery = buildSessionBridgeQuery({
   workspace_id: 'default',

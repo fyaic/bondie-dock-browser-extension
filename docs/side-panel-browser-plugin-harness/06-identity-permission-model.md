@@ -112,11 +112,20 @@ Side Panel 应按班底实例分组展示，而不是把所有 sessions 拉平�
 
 展示规则：
 
-- 从属关系实例：展示该实例下全部 sessions，可标记“查看全部”。
-- 沟通关系实例：只展示与当前用户相关的 sessions，可标记“仅相关”。
+- 从属关系实例：权限上可访问该实例下全部 sessions，可标记“查看全部”；首屏默认展示有界的对象/路由索引，不一次性拉取全部历史 generation。
+- 沟通关系实例：只展示与当前用户相关的 sessions，可标记“仅相关”；默认可直接展示该用户相关路由下的历史 generation。
 - 同一个用户拥有多个实例时，默认展示“有权限访问的全部实例”，并允许切换/筛选实例。
 - Session item 必须带上所属实例和 visibility 来源，避免用户误解数据范围。
 - 普通用户 UI 不展示 debug/raw session 详情。
+
+`visibility_policy=all_sessions` 表达的是授权范围，不是首屏数据加载策略。Side Panel 必须区分两种集合：
+
+- `route_index`：从属关系的首屏列表，展示可访问对象、聊天路由或会话入口；new/switch 必须基于用户选中的具体 route 执行。
+- `generation_list`：某个 route 下的当前/历史 generation 列表；适合沟通关系默认展示，也适合从属关系在用户点进某个 route 后懒加载。
+
+后续 Control Plane 和 Session Bridge 需要提供分页、搜索和 route drill-down；浏览器端不应把从属关系解释为“把全部 generation 一次性丢到前端”。
+
+Route label 必须来自 OpenClaw route registry、Control Plane 或等价可信身份/路由系统。Browser Extension、Session Bridge 和其他中间层都不允许维护 `用户 -> alias -> route label` 映射，也不允许用 `operator_name + display_name` 拼出候选 route。
 
 ## Fail Closed 规则
 
@@ -127,6 +136,7 @@ Side Panel 应按班底实例分组展示，而不是把所有 sessions 拉平�
 - user identity 有效但没有 relationship：显示空态，不做全局搜索。
 - 沟通关系不能 fallback 到从属关系或全量 sessions。
 - 浏览器页面 URL、DOM、用户手填 label 不能提升权限。
+- 用户 display name、operator name、alias 字段不能被中间层用于推断 OpenClaw route label。
 - 旧 Session Bridge 的 direct/group scope 只能作为兼容 adapter 输入，不能作为新权限模型的最终授权来源。
 
 ## 对现有 Session Bridge 的影响

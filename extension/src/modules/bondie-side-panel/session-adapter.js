@@ -90,6 +90,7 @@ export class OpenClawSessionAdapter {
         bridge: readiness,
         sessions: normalized.sessions,
         currentBinding: normalized.currentBinding,
+        collectionKind: normalized.collectionKind,
         bridgeId: normalized.bridgeId,
         rawCount: normalized.rawCount,
         unresolved: normalized.unresolved

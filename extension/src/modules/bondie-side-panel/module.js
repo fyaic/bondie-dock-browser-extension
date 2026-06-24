@@ -677,7 +677,8 @@ function buildInstanceSummaries({ config, bridge, scope, identityState, instance
 
 function buildLegacySessionGroups({ result, bridge, scope }) {
   const instance = buildLegacyInstance({ bridge, scope, bridgeId: result.bridgeId });
-  const sessions = (result.sessions || []).map((session) => attachInstanceToSession(session, instance, true));
+  const collectionKind = normalizeCollectionKind(result.collectionKind, instance.visibility_policy);
+  const sessions = (result.sessions || []).map((session) => attachInstanceToSession(session, instance, true, collectionKind));
   return {
     instances: [instance],
     groups: [
@@ -686,6 +687,7 @@ function buildLegacySessionGroups({ result, bridge, scope }) {
         instance,
         state: result.state,
         visibility_policy: instance.visibility_policy,
+        collection_kind: collectionKind,
         actions_enabled: true,
         sessions
       }
@@ -753,9 +755,11 @@ async function buildControlPlaneSessionsPayload({ config, context, identityState
       instance,
       state: result.state || 'unknown',
       visibility_policy: instance.visibility_policy,
+      collection_kind: normalizeCollectionKind(result.collectionKind, instance.visibility_policy),
       actions_enabled: instance.actions_enabled !== false && result.ok !== false,
       sessions: (result.sessions || []).map((session) => ({
         ...session,
+        collection_kind: normalizeCollectionKind(session.collection_kind || result.collectionKind, instance.visibility_policy),
         actions_enabled: session.actions_enabled !== false && instance.actions_enabled !== false && result.ok !== false
       })),
       error: result.ok === false ? redactDiagnostic(result.message || result.error || result.reason) : ''
@@ -803,7 +807,7 @@ function buildLegacyInstance({ bridge, scope, bridgeId = '' }) {
   };
 }
 
-function attachInstanceToSession(session, instance, actionsEnabled) {
+function attachInstanceToSession(session, instance, actionsEnabled, collectionKind = '') {
   return {
     ...session,
     instance_id: instance.instance_id,
@@ -812,6 +816,7 @@ function attachInstanceToSession(session, instance, actionsEnabled) {
     visibility_label: instance.visibility_label,
     relationship_type: instance.relationship_type,
     relationship_label: instance.relationship_label,
+    collection_kind: normalizeCollectionKind(collectionKind || session.collection_kind, instance.visibility_policy),
     actions_enabled: actionsEnabled
   };
 }
@@ -849,6 +854,7 @@ function buildFixtureSessionsPayload({ bridge, scope, viewer }) {
     instance,
     state: instance.status === 'online' ? 'ready' : 'instance_unavailable',
     visibility_policy: instance.visibility_policy,
+    collection_kind: normalizeCollectionKind('', instance.visibility_policy),
     actions_enabled: false,
     sessions: fixtureSessionsFor(instance).map((session) => attachInstanceToSession(session, instance, false))
   }));
@@ -1169,6 +1175,14 @@ function normalizeLocalRelationshipType(value) {
 
 function localVisibilityPolicy(relationshipType) {
   return relationshipType === 'subordinate' ? 'all_sessions' : 'participant_sessions';
+}
+
+function normalizeCollectionKind(value, visibilityPolicy) {
+  const kind = cleanString(value);
+  if (kind === 'route_index' || kind === 'generation_list') {
+    return kind;
+  }
+  return visibilityPolicy === 'all_sessions' ? 'route_index' : 'generation_list';
 }
 
 function localRelationshipLabel(relationshipType) {

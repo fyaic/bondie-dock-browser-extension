@@ -14,9 +14,6 @@ export function buildSessionBridgeQuery(scope) {
     organization,
     chat_type: routeType,
     chat_label: routeLabel,
-    operator_display_name: operatorId,
-    operator_name: operatorId,
-    operator_alias: operatorId,
     visibility_policy: normalizeVisibilityPolicy(scope.visibility_policy)
   });
 }
@@ -40,6 +37,7 @@ export function normalizeSessionsPayload(payload) {
   return {
     bridgeId: cleanString(payload?.bridge_id),
     currentBinding: normalizeCurrentBinding(payload?.current_binding),
+    collectionKind: normalizeCollectionKind(payload?.collection_kind, payload?.visibility_policy),
     sessions,
     rawCount: sessions.length,
     unresolved: isUnresolvedPayload(payload, sessions)
@@ -148,6 +146,14 @@ function compactObject(value) {
 
 function normalizeVisibilityPolicy(value) {
   return cleanString(value) === 'all_sessions' ? 'all_sessions' : 'participant_sessions';
+}
+
+function normalizeCollectionKind(value, visibilityPolicy) {
+  const kind = cleanString(value);
+  if (kind === 'route_index' || kind === 'generation_list') {
+    return kind;
+  }
+  return normalizeVisibilityPolicy(visibilityPolicy) === 'all_sessions' ? 'route_index' : 'generation_list';
 }
 
 function cleanString(value) {

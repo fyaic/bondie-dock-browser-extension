@@ -537,6 +537,7 @@ function sessionGroups(payload) {
         ...group,
         instance,
         instance_id: group.instance_id || instance?.instance_id || 'legacy-session-bridge',
+        collection_kind: normalizeCollectionKind(group.collection_kind, group.visibility_policy || instance?.visibility_policy),
         sessions: Array.isArray(group.sessions) ? group.sessions : []
       };
     });
@@ -555,12 +556,14 @@ function sessionGroups(payload) {
       instance,
       state: payload.state,
       actions_enabled: instance.actions_enabled !== false,
+      collection_kind: normalizeCollectionKind('', instance.visibility_policy),
       sessions: (payload.sessions || []).map((session) => ({
         ...session,
         instance_id: instance.instance_id,
         instance_name: instance.display_name,
         visibility_label: instance.visibility_label,
         relationship_label: instance.relationship_label,
+        collection_kind: normalizeCollectionKind(session.collection_kind, instance.visibility_policy),
         actions_enabled: instance.actions_enabled !== false
       }))
     }
@@ -581,10 +584,11 @@ function renderInstanceSwitcher(payload, groups) {
   }
   elements.instanceSwitcher.hidden = false;
   const total = groups.reduce((sum, group) => sum + (group.sessions?.length || 0), 0);
+  const totalNoun = groups.every((group) => collectionKind(group) === 'route_index') ? '对象' : '会话';
   elements.instanceSwitcher.appendChild(instanceChip({
     id: 'all',
     label: '全部',
-    meta: `${groups.length} 个 Bondie · ${total} 个会话`,
+    meta: `${groups.length} 个 Bondie · ${total} 个${totalNoun}`,
     status: payload.state || 'ready',
     selected: selectedInstanceId === 'all'
   }));
@@ -593,7 +597,7 @@ function renderInstanceSwitcher(payload, groups) {
     elements.instanceSwitcher.appendChild(instanceChip({
       id: group.instance_id,
       label: instance.display_name || group.instance_id,
-      meta: `${instance.relationship_label || '关系'} · ${instance.visibility_label || visibilityLabel(group.visibility_policy)} · ${group.sessions?.length || 0}`,
+      meta: `${instance.relationship_label || '关系'} · ${collectionLabel(group)} · ${group.sessions?.length || 0}`,
       status: instance.status || group.state,
       selected: selectedInstanceId === group.instance_id
     }));
@@ -633,7 +637,7 @@ function instanceGroupHeading(group) {
   const meta = document.createElement('span');
   meta.textContent = [
     instance.relationship_label || relationshipLabel(instance.relationship_type),
-    instance.visibility_label || visibilityLabel(group.visibility_policy),
+    collectionLabel(group),
     instance.status === 'online' ? 'online' : instance.status
   ].filter(Boolean).join(' · ');
   titleWrap.appendChild(title);
@@ -674,13 +678,21 @@ function sessionTitleRow(session, isCurrent) {
     pill.textContent = session.visibility_label;
     row.appendChild(pill);
   }
+  if (collectionKind(session) === 'route_index') {
+    const pill = document.createElement('span');
+    pill.className = 'session-pill session-pill-muted';
+    pill.textContent = '路由';
+    row.appendChild(pill);
+  }
   return row;
 }
 
 function sessionSummary(session) {
   const summary = document.createElement('div');
   summary.className = 'session-summary';
-  summary.textContent = session.summary || lastMessagePreview(session.last_messages) || '暂无摘要';
+  summary.textContent = session.summary
+    || lastMessagePreview(session.last_messages)
+    || (collectionKind(session) === 'route_index' ? '选择该对象后再新开或恢复这条 OpenClaw 路由' : '暂无摘要');
   return summary;
 }
 
@@ -688,6 +700,7 @@ function sessionMeta(session) {
   const meta = document.createElement('div');
   meta.className = 'session-meta';
   meta.textContent = [
+    collectionKind(session) === 'route_index' ? '路由索引' : '',
     session.model || '',
     session.project || '',
     formatTime(session.updated_at),
@@ -793,7 +806,7 @@ function updateSessionActionHint(payload, groups) {
   }
   const group = selectedActionGroup(payload);
   if (group && groupRequiresRouteSessionHint(group) && !selectedSessionId) {
-    elements.actionHint.textContent = '从属关系可查看全部；新开对话前先选择一条会话作为 route';
+    elements.actionHint.textContent = '从属关系展示可访问对象索引；新开或恢复前先选择具体路由';
     return;
   }
   elements.actionHint.textContent = usesControlPlane
@@ -1186,6 +1199,9 @@ function bridgeLabel(bridge) {
 function actionHint(payload) {
   const usesControlPlane = isControlPlanePayload(payload);
   if (payload.state === 'ready') {
+    if (payload.scope?.visibility_policy === 'all_sessions') {
+      return '从属关系已接入，首屏显示可访问对象索引；历史会话按选中路由加载';
+    }
     return usesControlPlane
       ? 'Control Plane 已接入，选择 Bondie 后可按权限新开或恢复会话'
       : 'Session Bridge 已接入，new/switch 会先二次确认，再等待 Bridge confirmed 字段';
@@ -1305,6 +1321,25 @@ function relationshipLabel(type) {
     legacy_direct: '当前 Bridge'
   };
   return labels[type] || '关系';
+}
+
+function normalizeCollectionKind(value, visibilityPolicy) {
+  const kind = String(value || '').trim();
+  if (kind === 'route_index' || kind === 'generation_list') {
+    return kind;
+  }
+  return visibilityPolicy === 'all_sessions' ? 'route_index' : 'generation_list';
+}
+
+function collectionKind(value) {
+  return normalizeCollectionKind(value?.collection_kind, value?.visibility_policy);
+}
+
+function collectionLabel(value) {
+  if (collectionKind(value) === 'route_index') {
+    return '对象索引';
+  }
+  return visibilityLabel(value?.visibility_policy);
 }
 
 function visibilityLabel(policy) {

@@ -96,6 +96,13 @@ Bondie C · 分享 · 仅相关
 
 普通 UI 不展示 raw route key、token、debug JSON。
 
+从属关系下的“查看全部”首屏不是完整历史流。它应先展示对象/路由索引：
+
+- row 可代表一个聊天对象、群聊 route 或 OpenClaw route 入口。
+- row 必须标记为“对象索引”或“路由”，避免和历史 generation 混淆。
+- 点击 row 后再加载该 route 下的 generation list；后续需要分页、搜索和按更新时间排序。
+- 新开对话/恢复会话只能在选中具体 route 或 generation 后执行，不能在“全部”聚合态直接执行。
+
 ## 权限规则
 
 ### 从属关系
@@ -107,7 +114,8 @@ visibility_policy = all_sessions
 
 允许：
 
-- 查看该 Bondie 实例全部 sessions。
+- 查看该 Bondie 实例全部 sessions 的权限范围。
+- 首屏查看有界 route index，按选中的 route 懒加载历史 sessions。
 - sessions 可包含其他人与该 Bondie 的对话。
 
 ### 沟通关系
@@ -125,6 +133,7 @@ visibility_policy = participant_sessions
 
 - 查看同一 Bondie 实例下其他用户 sessions。
 - 通过搜索、URL、route label 或 device pairing 提升为全量可见。
+- 在 Browser Extension、Session Bridge 或其他中间层维护 alias 表，或用 operator/display name 拼接 OpenClaw route label。
 
 ### 无关系
 
