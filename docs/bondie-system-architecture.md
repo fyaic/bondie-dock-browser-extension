@@ -1,6 +1,6 @@
 # Bondie System Architecture
 
-日期：2026-06-23
+日期：2026-06-29
 
 ## 三仓定位
 
@@ -8,9 +8,9 @@ Bondie 浏览器侧能力拆成三个独立仓库。三者必须分离，但命�
 
 | 层级 | 标准名称 | 标准仓库 | 职责 |
 |---|---|---|---|
-| 用户入口 | Bondie Dock | `fyaic/bondie-dock-browser-extension` | Chrome/Edge extension host、popup、options、host permissions、插件内插件系统 |
-| 权限和聚合服务 | Bondie Control Plane | `fyaic/bondie-control-plane` | OAuth/user identity、Bondie instance registry、从属/沟通关系、bridge registry、session visibility projection |
-| 设备侧桥 | Bondie OpenClaw Session Bridge | `fyaic/bondie-openclaw-session-bridge` | 每台 Bondie/OpenClaw 设备上的本地 sessions API，封装 OpenClaw runtime/Gateway |
+| 用户入口 | Bondie Dock | `https://github.com/fyaic/bondie-dock-browser-extension` | Chrome/Edge extension host、popup、options、host permissions、插件内插件系统 |
+| 权限和聚合服务 | Bondie Control Plane | `https://github.com/fyaic/bondie-control-plane` | OAuth/user identity、Bondie instance registry、从属/沟通关系、bridge registry、session visibility projection |
+| 设备侧桥 | Bondie OpenClaw Session Bridge | `https://github.com/fyaic/bondie-openclaw-session-bridge` | 每台 Bondie/OpenClaw 设备上的本地 sessions API，封装 OpenClaw runtime/Gateway |
 
 ## 调用链路
 
@@ -23,6 +23,13 @@ Bondie Dock browser extension
 ```
 
 当前本地落地状态：Bondie Dock 已支持通过 `bondie-control-plane` provider 调用本地 Bondie Control Plane；开发期 token 由 Options 的 Control Plane dev token 提供，生产 OAuth token provider 待登录授权系统文档接入。
+
+## 交付状态
+
+- Bondie Dock 当前交付分支：`feature/bondie-multi-instance-permissions`。
+- Bondie Control Plane 当前标准分支：`main`。
+- Bondie OpenClaw Session Bridge 当前标准分支：`main`。
+- 三个标准远端在 2026-06-29 已确认可访问并完成同步。
 
 ## 插件的插件
 
@@ -50,6 +57,7 @@ extension/src/sidepanel/
 - Dock 只渲染 Control Plane 返回的授权投影。
 - Control Plane 负责身份、关系和 bridge token 管理。
 - Session Bridge 只相信服务侧传入的 scope 和 bearer token，不相信浏览器直接传来的身份。
+- 不允许在中间层维护用户 alias 列表；route label 和 canonical session facts 必须来自 OpenClaw/上游路由事实。
 
 ## 当前本地路径
 

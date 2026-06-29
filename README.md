@@ -10,17 +10,41 @@ Bondie Dock（原 OpenClaw Browser Host Extension）是 Bondie / OpenClaw 的浏
 
 当前版本：`0.1.0-alpha.12`。
 
-最新主仓库：
+标准仓库：
 
 ```text
 https://github.com/fyaic/bondie-dock-browser-extension.git
 ```
 
-当前主线分支：
+当前交付分支：
 
 ```text
-main
+feature/bondie-multi-instance-permissions
 ```
+
+默认基础分支仍为 `main`；Bondie 多实例权限和 Side Panel 当前主线以 `feature/bondie-multi-instance-permissions` 为准。
+
+## 三仓联动
+
+Bondie 浏览器 Side Panel 由三个仓库协作完成：
+
+| 仓库 | 产品名 | 职责 |
+|---|---|---|
+| [fyaic/bondie-dock-browser-extension](https://github.com/fyaic/bondie-dock-browser-extension) | Bondie Dock | Chrome/Edge 浏览器插件入口，承载 popup、options、Side Panel、页面上下文和本地浏览器权限 |
+| [fyaic/bondie-control-plane](https://github.com/fyaic/bondie-control-plane) | Bondie Control Plane | 服务侧权限和聚合 API，负责用户身份、Bondie instance registry、从属/沟通关系、bridge registry 和 sessions proxy |
+| [fyaic/bondie-openclaw-session-bridge](https://github.com/fyaic/bondie-openclaw-session-bridge) | Bondie OpenClaw Session Bridge | 每台 Bondie/OpenClaw 设备上的本地桥，封装 OpenClaw runtime/Gateway 并返回 scoped sessions/actions |
+
+生产调用链路：
+
+```text
+Bondie Dock
+  -> bondie-side-panel feature module
+  -> Bondie Control Plane
+  -> Bondie OpenClaw Session Bridge
+  -> OpenClaw runtime / Gateway
+```
+
+Dock 不直接持有多台 bridge 的 endpoint/token；它只渲染 Control Plane 返回的授权 projection。开发期仍保留 legacy direct Bridge 路径用于本机验证。
 
 ## 当前结论
 
